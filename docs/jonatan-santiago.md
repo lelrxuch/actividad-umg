@@ -1,4 +1,4 @@
-# Jonatan Josue Santiago Itzep
+# Jonatan Santiago
 
 ## Rol en el equipo
 Desarrollador backend 
