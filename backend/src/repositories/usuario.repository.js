@@ -25,3 +25,27 @@ export async function updatePasswordAndClearToken(userId, passwordHash) {
     [passwordHash, userId]
   );
 }
+
+// ← AGREGA AQUÍ:
+export async function actualizarPerfil(id, datos) {
+  const { nombre, telefono, correoAlterno } = datos;
+
+  const query = `
+    UPDATE usuarios 
+    SET nombre = COALESCE($1, nombre),
+        telefono = COALESCE($2, telefono),
+        correo_alterno = COALESCE($3, correo_alterno),
+        actualizado_en = NOW()
+    WHERE id = $4
+    RETURNING id, nombre, telefono, correo_alterno, email;
+  `;
+
+  const resultado = await pool.query(query, [
+    nombre || null,
+    telefono || null,
+    correoAlterno || null,
+    id
+  ]);
+
+  return resultado.rows[0];
+}
