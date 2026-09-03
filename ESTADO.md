@@ -7,7 +7,7 @@ Leyenda: POR COMENZAR (archivo creado, sin lógica) · EN PROGRESO · FALTANTE (
 | Config (DB, env)            | src/config/db.js, src/config/env.js                      | POR COMENZAR   |
 | App / Server                | src/app.js, src/server.js                                 | POR COMENZAR   |
 | Auth - Login                | src/routes,controllers,services/auth.*                    | POR COMENZAR   |
-| Auth - Recuperar contraseña | src/routes,controllers,services/password.*                | EN PROGRESO    |
+| Auth - Recuperar contraseña | src/routes,controllers,services/password.*                | LISTO          |
 | Repository Usuario          | src/repositories/usuario.repository.js                    | POR COMENZAR   |
 | Solicitudes                 | routes,controllers,services,repository de Solicitud       | FALTANTE       |
 | Expedientes                 | routes,controllers,services,repository de Expediente      | FALTANTE       |

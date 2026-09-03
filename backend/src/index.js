@@ -1,6 +1,8 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import { pool } from './config/db.js';
+import passwordRoutes from './routes/password.routes.js';
+
 
 dotenv.config();
 
@@ -17,6 +19,8 @@ app.get('/health', async (req, res) => {
     res.status(500).json({ status: 'error', db: 'disconnected', message: err.message });
   }
 });
+
+app.use('/api/auth', passwordRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en http://localhost:${PORT}`);
