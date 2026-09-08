@@ -1,26 +1,22 @@
 // src/App.jsx
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { PublicLayout } from './layouts/PublicLayout';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 
-function App() {
+export default function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
-        {/* Redirección por defecto al Login */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-
-        {/* Rutas de Autenticación */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/registro" element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-
-        {/* Ruta comodín */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* Envoltorio General con Navbar y Footer */}
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/registro" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        </Route>
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }
-
-export default App;

@@ -2,10 +2,9 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: 'http://localhost:3000/api', // Puerto por defecto del backend Express
+  baseURL: 'http://localhost:4000/api', 
 });
 
-// Interceptor para adjuntar el Token JWT en peticiones protegidas
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
