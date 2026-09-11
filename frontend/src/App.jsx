@@ -1,22 +1,30 @@
-// src/App.jsx
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { PublicLayout } from './layouts/PublicLayout';
-import { LoginPage } from './pages/LoginPage';
-import { RegisterPage } from './pages/RegisterPage';
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import LoginPage from './pages/LoginPage';
+import RegistroPage from './pages/RegistroPage';
 
-export default function App() {
+function RutaProtegida({ children }) {
+  const token = localStorage.getItem('token');
+  return token ? children : <Navigate to="/login" replace />;
+}
+
+function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
-        {/* Envoltorio General con Navbar y Footer */}
-        <Route element={<PublicLayout />}>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/registro" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        </Route>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/registro" element={<RegistroPage />} />
+        <Route
+          path="/"
+          element={
+            <RutaProtegida>
+              <h1>Página principal</h1>
+            </RutaProtegida>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
+
+export default App;

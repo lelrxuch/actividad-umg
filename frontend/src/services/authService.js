@@ -1,32 +1,33 @@
-// src/services/authService.js
-import API from './api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-
-export const registerUser = async (userData) => {
-  try {
-    const response = await API.post('/auth/register', userData);
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.error || 'Error de conexión con el servidor');
+async function peticion(ruta, opciones = {}) {
+  const respuesta = await fetch(`${API_URL}${ruta}`, {
+    headers: { 'Content-Type': 'application/json', ...(opciones.headers || {}) },
+    ...opciones,
+  });
+  const datos = await respuesta.json().catch(() => ({}));
+  if (!respuesta.ok) {
+    throw new Error(datos.mensaje || 'Ocurrió un error inesperado.');
   }
-};
+  return datos;
+}
 
-// Inicio de sesión (Simulado temporalmente)
-export const loginUser = async (credentials) => {
-  try {
-    const response = await API.post('/auth/login', credentials);
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.error || 'Error de conexión con el servidor');
-  }
-};
+export function registrar(correo, contrasena) {
+  return peticion('/auth/registro', {
+    method: 'POST',
+    body: JSON.stringify({ correo, contrasena }),
+  });
+}
 
-// Solicitud de Recuperación de Clave (Conectado con password.routes.js)
-export const requestPasswordReset = async (email) => {
-  try {
-    const response = await API.post('/auth/forgot-password', { email });
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.error || 'Error al solicitar la recuperación');
-  }
-};
+export function iniciarSesion(correo, contrasena) {
+  return peticion('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ correo, contrasena }),
+  });
+}
+
+export function obtenerPerfil(token) {
+  return peticion('/auth/perfil', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
