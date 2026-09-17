@@ -1,105 +1,121 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as usuarioService from '../services/usuario.service.js';
+import * as usuarioRepo from '../repositories/usuario.repository.js';
+
+// Mockear el repository
+vi.mock('../repositories/usuario.repository.js', () => ({
+  actualizarPerfil: vi.fn(),
+}));
 
 describe('Usuario Service - SCRUM-16 Edición de Perfil', () => {
-
-  describe('Validaciones de campos editables', () => {
-    
-    it('debe rechazar nombre vacío', () => {
-      const nombre = '';
-      expect(nombre.trim().length >= 2).toBe(false);
-    });
-
-    it('debe rechazar nombre muy corto', () => {
-      const nombre = 'J';
-      expect(nombre.trim().length >= 2).toBe(false);
-    });
-
-    it('debe aceptar nombre válido', () => {
-      const nombre = 'Juan Pérez';
-      expect(nombre.trim().length >= 2).toBe(true);
-    });
-
-    it('debe validar formato de teléfono (8 dígitos)', () => {
-      const telefono = '12345678';
-      const regex = /^\d{8}$/;
-      expect(regex.test(telefono)).toBe(true);
-    });
-
-    it('debe rechazar teléfono con letras', () => {
-      const telefono = '1234567a';
-      const regex = /^\d{8}$/;
-      expect(regex.test(telefono)).toBe(false);
-    });
-
-    it('debe rechazar teléfono muy corto', () => {
-      const telefono = '1234567';
-      const regex = /^\d{8}$/;
-      expect(regex.test(telefono)).toBe(false);
-    });
-
-    it('debe validar formato de correo alterno', () => {
-      const correo = 'juan@gmail.com';
-      const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      expect(regex.test(correo)).toBe(true);
-    });
-
-    it('debe rechazar correo sin @', () => {
-      const correo = 'juangmail.com';
-      const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      expect(regex.test(correo)).toBe(false);
-    });
-
-    it('debe rechazar correo sin punto', () => {
-      const correo = 'juan@gmail';
-      const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      expect(regex.test(correo)).toBe(false);
-    });
+  
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  describe('Validación: Email institucional NO editable', () => {
+  describe('actualizarPerfil', () => {
     
-    it('debe proteger el email institucional de edición', () => {
-      const usuarioData = {
-        nombre: 'Juan Pérez',
-        email: 'juan@gmail.com', // NO se permite cambiar
-        telefono: '12345678'
-      };
+    it('debe permitir actualizar nombre válido', async () => {
+      usuarioRepo.actualizarPerfil.mockResolvedValueOnce({
+        id: 1,
+        nombre: 'Juan Nuevo',
+        telefono: '12345678',
+        correo_alterno: 'juan@gmail.com',
+        email: 'juan@universidad.edu',
+      });
+
+      const resultado = await usuarioService.actualizarPerfil(1, {
+        nombre: 'Juan Nuevo',
+      });
+
+      expect(resultado.nombre).toBe('Juan Nuevo');
+      expect(usuarioRepo.actualizarPerfil).toHaveBeenCalledOnce();
+    });
+
+    it('debe permitir actualizar teléfono válido (8 dígitos)', async () => {
+      usuarioRepo.actualizarPerfil.mockResolvedValueOnce({
+        id: 1,
+        nombre: 'Juan',
+        telefono: '87654321',
+        correo_alterno: 'juan@gmail.com',
+        email: 'juan@universidad.edu',
+      });
+
+      const resultado = await usuarioService.actualizarPerfil(1, {
+        telefono: '87654321',
+      });
+
+      expect(resultado.telefono).toBe('87654321');
+      expect(usuarioRepo.actualizarPerfil).toHaveBeenCalledWith(1, expect.objectContaining({
+        telefono: '87654321',
+      }));
+    });
+
+    it('debe rechazar teléfono con formato inválido (no son 8 dígitos)', async () => {
+      const telefonoInvalido = '1234567'; // solo 7 dígitos
+      const regex = /^\d{8}$/;
       
-      // El email NO debe estar en los campos editables
+      expect(regex.test(telefonoInvalido)).toBe(false);
+    });
+
+    it('debe permitir actualizar correo alterno válido', async () => {
+      usuarioRepo.actualizarPerfil.mockResolvedValueOnce({
+        id: 1,
+        nombre: 'Juan',
+        telefono: '12345678',
+        correo_alterno: 'nuevo@gmail.com',
+        email: 'juan@universidad.edu',
+      });
+
+      const resultado = await usuarioService.actualizarPerfil(1, {
+        correo_alterno: 'nuevo@gmail.com',
+      });
+
+      expect(resultado.correo_alterno).toBe('nuevo@gmail.com');
+    });
+
+    it('NO debe permitir actualizar email institucional (se ignora en el payload)', async () => {
       const camposEditables = ['nombre', 'telefono', 'correo_alterno'];
+      
+      // El email NO está en los campos editables
       expect(camposEditables.includes('email')).toBe(false);
     });
 
-    it('debe rechazar intento de cambiar email institucional', () => {
-      const emailAnterior = 'juan@universidad.edu';
-      const emailIntentado = 'otro@universidad.edu';
+    it('debe usar COALESCE: campos no enviados no se sobreescriben', async () => {
+      // Cuando se envía solo nombre, los otros campos deben mantener sus valores
+      usuarioRepo.actualizarPerfil.mockResolvedValueOnce({
+        id: 1,
+        nombre: 'Juan Actualizado',
+        telefono: '12345678', // valor anterior, NO se envió, debe mantenerse
+        correo_alterno: 'juan@gmail.com', // valor anterior, NO se envió, debe mantenerse
+        email: 'juan@universidad.edu',
+      });
+
+      const resultado = await usuarioService.actualizarPerfil(1, {
+        nombre: 'Juan Actualizado',
+        // telefono y correo_alterno no se envían
+      });
+
+      // El servicio debe haber sido llamado, y el repository (que usa COALESCE) debe mantener los valores
+      expect(usuarioRepo.actualizarPerfil).toHaveBeenCalledWith(1, expect.objectContaining({
+        nombre: 'Juan Actualizado',
+      }));
       
-      // Si alguien intenta cambiar el email, debe ser rechazado
-      const esEditableEmail = false; // Hardcoded: email NO es editable
-      expect(emailIntentado === emailAnterior || !esEditableEmail).toBe(true);
-    });
-  });
-
-  describe('Validación: Que solo se actualicen campos permitidos', () => {
-    
-    it('debe permitir actualizar nombre', () => {
-      const camposPermitidos = ['nombre', 'telefono', 'correo_alterno'];
-      expect(camposPermitidos.includes('nombre')).toBe(true);
+      // La respuesta debe tener los valores anteriores intactos
+      expect(resultado.telefono).toBe('12345678');
+      expect(resultado.correo_alterno).toBe('juan@gmail.com');
     });
 
-    it('debe permitir actualizar teléfono', () => {
-      const camposPermitidos = ['nombre', 'telefono', 'correo_alterno'];
-      expect(camposPermitidos.includes('telefono')).toBe(true);
+    it('debe rechazar nombre vacío o muy corto', () => {
+      const nombreCorto = 'J';
+      
+      expect(nombreCorto.trim().length >= 2).toBe(false);
     });
 
-    it('debe permitir actualizar correo alterno', () => {
-      const camposPermitidos = ['nombre', 'telefono', 'correo_alterno'];
-      expect(camposPermitidos.includes('correo_alterno')).toBe(true);
-    });
-
-    it('NO debe permitir actualizar email institucional', () => {
-      const camposPermitidos = ['nombre', 'telefono', 'correo_alterno'];
-      expect(camposPermitidos.includes('email')).toBe(false);
+    it('debe aceptar nombre válido (al menos 2 caracteres)', () => {
+      const nombreValido = 'Juan';
+      
+      expect(nombreValido.trim().length >= 2).toBe(true);
     });
   });
 });

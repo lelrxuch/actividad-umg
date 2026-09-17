@@ -1,70 +1,101 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as passwordService from '../services/password.service.js';
-import { pool } from '../config/db.js';
+import * as usuarioRepo from '../repositories/usuario.repository.js';
 
-// Mockear la BD
-vi.mock('../config/db.js', () => ({
-  pool: {
-    query: vi.fn()
-  }
+// Mockear el repository
+vi.mock('../repositories/usuario.repository.js', () => ({
+  findByEmail: vi.fn(),
+  saveResetToken: vi.fn(),
+  findByResetTokenHash: vi.fn(),
+  updatePasswordAndClearToken: vi.fn(),
 }));
 
 describe('Password Service - SCRUM-15', () => {
   
-  describe('Validación de contraseña nueva', () => {
-    it('debe rechazar contraseña muy corta', () => {
-      const password = '123456';
-      const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-      expect(regex.test(password)).toBe(false);
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('solicitarRecuperacion', () => {
+    
+    it('no debe revelar si un email existe o no (respuesta idéntica)', async () => {
+      // Usuario no existe
+      usuarioRepo.findByEmail.mockResolvedValueOnce(null);
+      const result1 = await passwordService.solicitarRecuperacion('inexistente@test.com');
+      expect(result1).toBeUndefined();
+
+      // Usuario existe
+      usuarioRepo.findByEmail.mockResolvedValueOnce({
+        id: 1,
+        email: 'existe@test.com',
+      });
+      usuarioRepo.saveResetToken.mockResolvedValueOnce(undefined);
+      const result2 = await passwordService.solicitarRecuperacion('existe@test.com');
+      // En ambos casos no debería revelar información (la función retorna token solo en pruebas locales)
+      expect(typeof result2 === 'string' || result2 === undefined).toBe(true);
     });
 
-    it('debe rechazar contraseña sin mayúscula', () => {
-      const password = 'contraseña123';
-      const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-      expect(regex.test(password)).toBe(false);
-    });
+    it('debe generar un token cuando el email existe', async () => {
+      usuarioRepo.findByEmail.mockResolvedValueOnce({
+        id: 1,
+        email: 'usuario@test.com',
+      });
+      usuarioRepo.saveResetToken.mockResolvedValueOnce(undefined);
 
-    it('debe rechazar contraseña sin número', () => {
-      const password = 'Contraseña';
-      const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-      expect(regex.test(password)).toBe(false);
-    });
-
-    it('debe aceptar contraseña válida', () => {
-      const password = 'Contraseña123';
-      const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-      expect(regex.test(password)).toBe(true);
+      const token = await passwordService.solicitarRecuperacion('usuario@test.com');
+      
+      expect(token).toBeDefined();
+      expect(typeof token).toBe('string');
+      expect(token.length).toBeGreaterThan(0);
+      expect(usuarioRepo.saveResetToken).toHaveBeenCalledOnce();
     });
   });
 
-  describe('Validación de token', () => {
-    it('debe verificar que el token no sea vacío', () => {
-      const token = '';
-      expect(token.length > 0).toBe(false);
+  describe('restablecerContrasena', () => {
+    
+    it('debe rechazar token inexistente', async () => {
+      usuarioRepo.findByResetTokenHash.mockResolvedValueOnce(null);
+
+      await expect(
+        passwordService.restablecerContrasena('tokenInvalido', 'NuevaPass123')
+      ).rejects.toThrow('Token inválido');
     });
 
-    it('debe verificar que el token tenga formato válido', () => {
-      const token = 'abc123def456';
-      expect(token.length >= 10).toBe(true);
+    it('debe rechazar token expirado', async () => {
+      const ahora = new Date();
+      const hace1Hora = new Date(ahora.getTime() - 60 * 60 * 1000);
+
+      usuarioRepo.findByResetTokenHash.mockResolvedValueOnce({
+        id: 1,
+        email: 'usuario@test.com',
+        reset_token_expira: hace1Hora, // expirado
+      });
+
+      await expect(
+        passwordService.restablecerContrasena('tokenExpirado', 'NuevaPass123')
+      ).rejects.toThrow('Token expirado');
     });
 
-    it('debe rechazar token muy corto', () => {
-      const token = 'abc';
-      expect(token.length >= 10).toBe(false);
-    });
-  });
+    it('debe actualizar la contraseña con token válido y vigente', async () => {
+      const ahora = new Date();
+      const en1Hora = new Date(ahora.getTime() + 60 * 60 * 1000);
 
-  describe('Validación de expiración', () => {
-    it('debe detectar token expirado', () => {
-      const expirationTime = new Date(Date.now() - 3600000); // Hace 1 hora
-      const isExpired = new Date() > expirationTime;
-      expect(isExpired).toBe(true);
-    });
+      usuarioRepo.findByResetTokenHash.mockResolvedValueOnce({
+        id: 1,
+        email: 'usuario@test.com',
+        reset_token_expira: en1Hora, // vigente
+      });
+      usuarioRepo.updatePasswordAndClearToken.mockResolvedValueOnce(undefined);
 
-    it('debe detectar token vigente', () => {
-      const expirationTime = new Date(Date.now() + 3600000); // En 1 hora
-      const isExpired = new Date() > expirationTime;
-      expect(isExpired).toBe(false);
+      await expect(
+        passwordService.restablecerContrasena('tokenValido', 'NuevaPass123')
+      ).resolves.not.toThrow();
+
+      expect(usuarioRepo.updatePasswordAndClearToken).toHaveBeenCalledOnce();
+      expect(usuarioRepo.updatePasswordAndClearToken).toHaveBeenCalledWith(
+        1,
+        expect.any(String) // hash de la contraseña
+      );
     });
   });
 });

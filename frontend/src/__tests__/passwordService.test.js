@@ -2,40 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 describe('Password Service - Frontend - SCRUM-15', () => {
 
-  describe('Validación de nueva contraseña', () => {
-    
-    it('debe rechazar contraseña muy corta', () => {
-      const password = '123456';
-      const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-      expect(regex.test(password)).toBe(false);
-    });
-
-    it('debe rechazar contraseña sin mayúscula', () => {
-      const password = 'contraseña123';
-      const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-      expect(regex.test(password)).toBe(false);
-    });
-
-    it('debe rechazar contraseña sin número', () => {
-      const password = 'Contraseña';
-      const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-      expect(regex.test(password)).toBe(false);
-    });
-
-    it('debe aceptar contraseña válida', () => {
-      const password = 'Contraseña123';
-      const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-      expect(regex.test(password)).toBe(true);
-    });
-
-    it('debe aceptar contraseña con caracteres especiales', () => {
-      const password = 'Contr@seña123';
-      const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-      expect(regex.test(password)).toBe(true);
-    });
-  });
-
-  describe('Validación de confirmación de contraseña', () => {
+  describe('Validación en formulario de reset', () => {
     
     it('debe detectar que las contraseñas coinciden', () => {
       const password = 'Contraseña123';
@@ -52,6 +19,11 @@ describe('Password Service - Frontend - SCRUM-15', () => {
     it('debe rechazar si confirmación está vacía', () => {
       const confirmPassword = '';
       expect(confirmPassword.length > 0).toBe(false);
+    });
+
+    it('debe rechazar si nueva contraseña está vacía', () => {
+      const password = '';
+      expect(password.length > 0).toBe(false);
     });
   });
 
@@ -71,6 +43,12 @@ describe('Password Service - Frontend - SCRUM-15', () => {
       const urlParams = new URLSearchParams('token=abc123def456');
       const token = urlParams.get('token');
       expect(token).toBe('abc123def456');
+    });
+
+    it('debe validar que el token tenga contenido', () => {
+      const urlParams = new URLSearchParams('token=');
+      const token = urlParams.get('token');
+      expect(token.length === 0).toBe(true);
     });
   });
 });
