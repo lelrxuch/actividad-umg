@@ -23,10 +23,8 @@ export async function resetPassword(req, res) {
     return res.status(400).json({ error: 'Token y nueva contraseña son requeridos' });
   }
 
-  if (nuevaContrasena.length < 8) {
-    return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
-  }
-
+  // La política de fuerza la valida el service contra password.validator.js,
+  // que es la única fuente de verdad. Aquí solo se traduce el error a HTTP.
   try {
     await restablecerContrasena(token, nuevaContrasena);
     res.json({ message: 'Contraseña actualizada correctamente' });
