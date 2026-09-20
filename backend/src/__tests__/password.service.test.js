@@ -94,7 +94,7 @@ describe('Password Service - SCRUM-15', () => {
       expect(usuarioRepo.updatePasswordAndClearToken).toHaveBeenCalledOnce();
       expect(usuarioRepo.updatePasswordAndClearToken).toHaveBeenCalledWith(
         1,
-        expect.any(String) // hash de la contraseña
+        expect.stringMatching(/^\$2[aby]\$/) // hash de la contraseña
       );
     });
   });
