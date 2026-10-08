@@ -8,6 +8,7 @@ import {
   findByResetTokenHash,
   updatePasswordAndClearToken,
 } from '../repositories/usuario.repository.js';
+import { validarContrasena } from '../validators/password.validator.js';
 
 const MINUTOS_EXPIRACION = Number(process.env.RESET_TOKEN_EXPIRES_MIN || 30);
 
@@ -33,7 +34,21 @@ export async function solicitarRecuperacion(email) {
   return token; // solo se usa para pruebas locales, no debería exponerse en producción
 }
 
+/**
+ * Restablece la contraseña de un usuario a partir de un token de recuperación.
+ *
+ * La política de fuerza se valida antes de tocar la base de datos: es una
+ * comprobación de entrada pura, evita una consulta inútil y, de paso, no le
+ * confirma a quien prueba tokens al azar si el token era válido o no.
+ *
+ * @param {string} token Token de recuperación en claro, tal como llegó en el enlace.
+ * @param {string} nuevaContrasena Contraseña nueva en texto plano.
+ * @throws {Error & { status?: number }} Si la contraseña no cumple la política,
+ *   si el token no existe o si ya expiró.
+ */
 export async function restablecerContrasena(token, nuevaContrasena) {
+  validarContrasena(nuevaContrasena);
+
   const tokenHash = hashToken(token);
   const usuario = await findByResetTokenHash(tokenHash);
 
