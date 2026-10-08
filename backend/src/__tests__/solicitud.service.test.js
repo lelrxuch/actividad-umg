@@ -28,7 +28,9 @@ describe('solicitud.service — integración de los patrones State y Observer', 
     it('persiste la solicitud nueva en estado Borrador', async () => {
       solicitudRepository.crear.mockResolvedValue({ id: 99, estudiante_id: 3, estado: 'Borrador' });
 
-      const creada = await solicitudService.crearSolicitud(3);
+      // SCRUM-30: la modalidad de beca ahora es obligatoria y la resuelve
+      // SolicitudFactory; el estado inicial lo sigue fijando el patrón State.
+      const creada = await solicitudService.crearSolicitud(3, 'universitaria');
 
       expect(solicitudRepository.crear).toHaveBeenCalledWith(3, 'Borrador');
       expect(creada).toMatchObject({ id: 99, estado: 'Borrador', accionesPermitidas: ['enviar'] });

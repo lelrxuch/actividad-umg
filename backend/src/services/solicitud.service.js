@@ -1,14 +1,18 @@
 // Lógica de negocio de Solicitudes.
 //
-// Este service es el punto donde se integran los dos patrones de comportamiento:
-//   - State    (backend/src/patterns/state)    → decide qué transiciones son válidas.
-//   - Observer (backend/src/patterns/observer) → decide a quién se le avisa del cambio.
+// Este service es el punto donde se integran los patrones implementados:
+//   - State          (backend/src/patterns/state)     → qué transiciones son válidas.
+//   - Observer       (backend/src/patterns/observer)   → a quién se le avisa del cambio.
+//   - Factory Method (backend/src/patterns/creational) → qué modalidad de beca es y
+//                                                        qué documentación exige.
 //
-// Nótese que no hay un solo `if` ni `switch` sobre el estado en todo el archivo:
-// el service orquesta (carga, delega, persiste) y las reglas viven en los estados.
+// Nótese que no hay un solo `if` ni `switch` sobre el estado ni sobre el tipo de
+// beca en todo el archivo: el service orquesta (carga, delega, persiste) y las
+// reglas viven en los estados y en las clases de modalidad.
 import * as solicitudRepository from '../repositories/solicitud.repository.js';
 import { Solicitud, crearEstadoDesdeNombre } from '../patterns/state/index.js';
 import { EmailNotificationListener } from '../patterns/observer/EmailNotificationListener.js';
+import { SolicitudFactory } from '../patterns/creational/SolicitudFactory.js';
 
 /**
  * Reconstruye el objeto de dominio a partir de la fila de base de datos y le
@@ -69,16 +73,33 @@ async function aplicarTransicion(id, accion, opciones = {}) {
 }
 
 /**
- * Crea una solicitud nueva en estado Borrador.
+ * Crea una solicitud nueva, en estado Borrador, para una modalidad de beca.
+ *
+ * Aquí se cruzan dos patrones: el Factory Method resuelve *qué* beca es y qué
+ * documentos exigirá, y el State fija el punto de partida del ciclo de vida
+ * (Borrador). La modalidad se valida antes de escribir en base de datos, de
+ * modo que un tipo inexistente no deja una solicitud huérfana.
+ *
+ * El tipo es obligatorio: una solicitud sin modalidad no tiene requisitos de
+ * documentación y por tanto su expediente no sería validable después.
+ *
  * @param {number} estudianteId
- * @returns {Promise<object>}
+ * @param {string} tipo Modalidad de beca; ver {@link tiposDeBeca}.
+ * @returns {Promise<object>} La solicitud creada, con su estado y la
+ *   documentación que el estudiante deberá reunir.
+ * @throws {Error & { status: number }} 400 si la modalidad no existe.
  */
-export async function crearSolicitud(estudianteId) {
+export async function crearSolicitud(estudianteId, tipo) {
+  const modalidad = SolicitudFactory.crearSolicitud(tipo);
   const borrador = new Solicitud({ estudiante: estudianteId });
+
+  // ponytail: la fila solo guarda el estado. La modalidad se devuelve pero no se
+  // persiste porque `solicitudes` no tiene columna `tipo`; persistirla cuando
+  // el esquema la tenga.
   const fila = await solicitudRepository.crear(estudianteId, borrador.nombreEstado);
 
   borrador.id = fila.id;
-  return borrador.toJSON();
+  return { ...borrador.toJSON(), ...modalidad.toJSON() };
 }
 
 /**
@@ -124,4 +145,23 @@ export function evaluarSolicitud(id, opciones) {
  */
 export function dictaminarSolicitud(id, aprobado, opciones) {
   return aplicarTransicion(id, (solicitud) => solicitud.dictaminar(aprobado), opciones);
+}
+
+/**
+ * Modalidades de beca disponibles, para que el frontend arme el selector sin
+ * tener la lista duplicada.
+ * @returns {string[]}
+ */
+export function tiposDeBeca() {
+  return SolicitudFactory.tiposDisponibles();
+}
+
+/**
+ * Documentación exigida por una modalidad, sin iniciar ninguna solicitud.
+ * @param {string} tipo
+ * @returns {string[]}
+ * @throws {Error & { status: number }} 400 si la modalidad no existe.
+ */
+export function documentosRequeridos(tipo) {
+  return SolicitudFactory.crearSolicitud(tipo).documentosRequeridos;
 }
