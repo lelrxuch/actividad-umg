@@ -2,23 +2,43 @@
   "info": {
     "_postman_id": "75fb8fb5-373e-4799-b909-6aee606719ed",
     "name": "Becas API - Integración",
+    "description": "Colección de pruebas de integración para la Plataforma Nacional de Gestión de Becas.\n\nNota: Los endpoints /api/auth/register y /api/auth/login aún no están implementados (PR #6 en progreso).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "58175203",
-    "_collection_link": "https://go.postman.co/collection/58175203-75fb8fb5-373e-4799-b909-6aee606719ed?source=collection_link"
+    "_exporter_id": "58175203"
   },
   "item": [
     {
       "name": "GET /health - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Devuelve status ok', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('status', 'ok');",
+              "});",
+              "",
+              "pm.test('BD conectada', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('db', 'connected');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://localhost:4000/health",
+          "raw": "{{base_url}}/health",
           "protocol": "http",
           "host": [
-            "localhost"
+            "{{base_url}}"
           ],
-          "port": "4000",
           "path": [
             "health"
           ]
@@ -28,12 +48,33 @@
     },
     {
       "name": "POST /api/auth/forgot-password - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Devuelve mensaje de confirmación', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('message');",
+              "});",
+              "",
+              "pm.test('Devuelve token de prueba (debug)', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('tokenDebug');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "POST",
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n  \"email\": \"juan@gmail.com\"\r\n}",
+          "raw": "{\r\n  \"email\": \"juan@miumg.edu.gt\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -41,12 +82,57 @@
           }
         },
         "url": {
-          "raw": "http://localhost:4000/api/auth/forgot-password",
+          "raw": "{{base_url}}/api/auth/forgot-password",
           "protocol": "http",
           "host": [
-            "localhost"
+            "{{base_url}}"
           ],
-          "port": "4000",
+          "path": [
+            "api",
+            "auth",
+            "forgot-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/auth/forgot-password - Error (Email vacío)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Devuelve mensaje de error', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"email\": \"\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/forgot-password",
+          "protocol": "http",
+          "host": [
+            "{{base_url}}"
+          ],
           "path": [
             "api",
             "auth",
@@ -58,12 +144,29 @@
     },
     {
       "name": "POST /api/auth/reset-password - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Devuelve mensaje de éxito', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('message');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "POST",
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n  \"token\": \"52b0fab8c1caf2826b578960855e1c27d008e2af5351d6b156937aa2064c96a4\",\r\n  \"nuevaContrasena\": \"NuevaPass123\"\r\n}",
+          "raw": "{\r\n  \"token\": \"<token-de-tu-base-local>\",\r\n  \"nuevaContrasena\": \"NuevaPass123\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -71,12 +174,11 @@
           }
         },
         "url": {
-          "raw": "http://localhost:4000/api/auth/reset-password",
+          "raw": "{{base_url}}/api/auth/reset-password",
           "protocol": "http",
           "host": [
-            "localhost"
+            "{{base_url}}"
           ],
-          "port": "4000",
           "path": [
             "api",
             "auth",
@@ -87,7 +189,24 @@
       "response": []
     },
     {
-      "name": "POST /api/auth/reset-password - Error",
+      "name": "POST /api/auth/reset-password - Error (Token inválido)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Devuelve error de token inválido', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "POST",
         "header": [],
@@ -101,12 +220,11 @@
           }
         },
         "url": {
-          "raw": "http://localhost:4000/api/auth/reset-password",
+          "raw": "{{base_url}}/api/auth/reset-password",
           "protocol": "http",
           "host": [
-            "localhost"
+            "{{base_url}}"
           ],
-          "port": "4000",
           "path": [
             "api",
             "auth",
@@ -118,17 +236,40 @@
     },
     {
       "name": "PUT /api/usuarios/:id/perfil - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Devuelve mensaje de éxito', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('mensaje');",
+              "});",
+              "",
+              "pm.test('Devuelve objeto usuario actualizado', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('usuario');",
+              "  pm.expect(pm.response.json().usuario).to.have.property('nombre');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "PUT",
         "header": [
           {
             "key": "Authorization",
-            "value": "{{bearer_token_0yj2}}"
+            "value": "Bearer <jwt-token-aqui>",
+            "type": "text"
           }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n  \"nombre\": \"Juan Pérez Actualizado\",\r\n  \"telefono\": \"87654321\",\r\n  \"correo_alterno\": \"juan.nuevo@gmail.com\"\r\n}",
+          "raw": "{\r\n  \"nombre\": \"Juan Pérez Actualizado\",\r\n  \"telefono\": \"87654321\",\r\n  \"correo_alterno\": \"juan.nuevo@miumg.edu.gt\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -136,12 +277,11 @@
           }
         },
         "url": {
-          "raw": "http://localhost:4000/api/usuarios/1/perfil",
+          "raw": "{{base_url}}/api/usuarios/1/perfil",
           "protocol": "http",
           "host": [
-            "localhost"
+            "{{base_url}}"
           ],
-          "port": "4000",
           "path": [
             "api",
             "usuarios",
@@ -154,14 +294,26 @@
     },
     {
       "name": "PUT /api/usuarios/:id/perfil - Error (Sin token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 401 Unauthorized', () => {",
+              "  pm.response.to.have.status(401);",
+              "});",
+              "",
+              "pm.test('Devuelve error de autenticación', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "PUT",
-        "header": [
-          {
-            "key": "",
-            "value": "{{bearer_token_0yj2}}"
-          }
-        ],
+        "header": [],
         "body": {
           "mode": "raw",
           "raw": "{\r\n  \"nombre\": \"Juan Intento\"\r\n}",
@@ -172,12 +324,11 @@
           }
         },
         "url": {
-          "raw": "http://localhost:4000/api/usuarios/1/perfil",
+          "raw": "{{base_url}}/api/usuarios/1/perfil",
           "protocol": "http",
           "host": [
-            "localhost"
+            "{{base_url}}"
           ],
-          "port": "4000",
           "path": [
             "api",
             "usuarios",
@@ -191,12 +342,9 @@
   ],
   "variable": [
     {
-      "key": "bearer_token_0yj2",
-      "secret": true
-    },
-    {
-      "key": "json_web_token_0sum",
-      "secret": true
+      "key": "base_url",
+      "value": "http://localhost:4000",
+      "type": "string"
     }
   ]
 }
