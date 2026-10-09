@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "75fb8fb5-373e-4799-b909-6aee606719ed",
     "name": "Becas API - Integración",
-    "description": "Colección de pruebas de integración para la Plataforma Nacional de Gestión de Becas.\n\nNota: Los endpoints /api/auth/register y /api/auth/login aún no están implementados (PR #6 en progreso).",
+    "description": "Colección de pruebas de integración para la Plataforma Nacional de Gestión de Becas.\n\nCómo correrla:\n1. Levantar el backend (npm run dev) con la base de datos local activa.\n2. Importar esta colección en Postman.\n3. Correr la carpeta completa en orden. La petición de forgot-password guarda el token de recuperación en la variable reset_token, que reset-password reutiliza.\n\nPendientes conocidos:\n- Los endpoints /api/auth/registro y /api/auth/login todavía no existen (PR #6 en progreso). Cuando entren, hay que agregar un pre-request de login que llene la variable jwt_token automáticamente.\n- Mientras tanto, la petición de perfil requiere pegar un JWT válido a mano en la variable jwt_token.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "58175203"
   },
@@ -35,7 +35,6 @@
         "header": [],
         "url": {
           "raw": "{{base_url}}/health",
-          "protocol": "http",
           "host": [
             "{{base_url}}"
           ],
@@ -61,9 +60,17 @@
               "  pm.expect(pm.response.json()).to.have.property('message');",
               "});",
               "",
-              "pm.test('Devuelve token de prueba (debug)', () => {",
-              "  pm.expect(pm.response.json()).to.have.property('tokenDebug');",
-              "});"
+              "// tokenDebug solo lo devuelve el backend cuando NODE_ENV !== 'production'",
+              "// (ver password.controller.js). Por eso no se afirma su existencia: se",
+              "// guarda si viene, para que reset-password pueda encadenarse sin pegar",
+              "// el token a mano.",
+              "const cuerpo = pm.response.json();",
+              "if (cuerpo.tokenDebug) {",
+              "  pm.collectionVariables.set('reset_token', cuerpo.tokenDebug);",
+              "  console.log('reset_token guardado desde tokenDebug');",
+              "} else {",
+              "  console.log('Sin tokenDebug: o el correo no existe, o NODE_ENV=production.');",
+              "}"
             ],
             "type": "text/javascript"
           }
@@ -83,7 +90,6 @@
         },
         "url": {
           "raw": "{{base_url}}/api/auth/forgot-password",
-          "protocol": "http",
           "host": [
             "{{base_url}}"
           ],
@@ -129,7 +135,6 @@
         },
         "url": {
           "raw": "{{base_url}}/api/auth/forgot-password",
-          "protocol": "http",
           "host": [
             "{{base_url}}"
           ],
@@ -166,7 +171,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n  \"token\": \"<token-de-tu-base-local>\",\r\n  \"nuevaContrasena\": \"NuevaPass123\"\r\n}",
+          "raw": "{\r\n  \"token\": \"{{reset_token}}\",\r\n  \"nuevaContrasena\": \"NuevaPass123\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -175,7 +180,6 @@
         },
         "url": {
           "raw": "{{base_url}}/api/auth/reset-password",
-          "protocol": "http",
           "host": [
             "{{base_url}}"
           ],
@@ -221,7 +225,51 @@
         },
         "url": {
           "raw": "{{base_url}}/api/auth/reset-password",
-          "protocol": "http",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "reset-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/auth/reset-password - Error (Contraseña débil)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Rechaza contraseña sin mayúscula ni número', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"token\": \"{{reset_token}}\",\r\n  \"nuevaContrasena\": \"debilucha\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/reset-password",
           "host": [
             "{{base_url}}"
           ],
@@ -249,9 +297,19 @@
               "  pm.expect(pm.response.json()).to.have.property('mensaje');",
               "});",
               "",
-              "pm.test('Devuelve objeto usuario actualizado', () => {",
-              "  pm.expect(pm.response.json()).to.have.property('usuario');",
-              "  pm.expect(pm.response.json().usuario).to.have.property('nombre');",
+              "pm.test('Devuelve el usuario actualizado', () => {",
+              "  const usuario = pm.response.json().usuario;",
+              "  pm.expect(usuario).to.be.an('object');",
+              "  pm.expect(usuario).to.have.property('nombre', 'Juan Pérez Actualizado');",
+              "});",
+              "",
+              "// El controller desestructura correoAlterno (camelCase) del body, pero la",
+              "// columna en la base se llama correo_alterno. Esta aserción comprueba que el",
+              "// valor realmente llegó hasta la base: si alguien cambia el nombre del campo",
+              "// en un lado y no en el otro, la prueba falla en vez de pasar en falso.",
+              "pm.test('El correo alterno sí se guardó', () => {",
+              "  const usuario = pm.response.json().usuario;",
+              "  pm.expect(usuario.correo_alterno).to.eql('juan.nuevo@miumg.edu.gt');",
               "});"
             ],
             "type": "text/javascript"
@@ -263,13 +321,13 @@
         "header": [
           {
             "key": "Authorization",
-            "value": "Bearer <jwt-token-aqui>",
+            "value": "Bearer {{jwt_token}}",
             "type": "text"
           }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n  \"nombre\": \"Juan Pérez Actualizado\",\r\n  \"telefono\": \"87654321\",\r\n  \"correo_alterno\": \"juan.nuevo@miumg.edu.gt\"\r\n}",
+          "raw": "{\r\n  \"nombre\": \"Juan Pérez Actualizado\",\r\n  \"telefono\": \"87654321\",\r\n  \"correoAlterno\": \"juan.nuevo@miumg.edu.gt\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -278,7 +336,58 @@
         },
         "url": {
           "raw": "{{base_url}}/api/usuarios/1/perfil",
-          "protocol": "http",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "usuarios",
+            "1",
+            "perfil"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PUT /api/usuarios/:id/perfil - Error (Teléfono inválido)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Rechaza teléfono que no tiene 8 dígitos', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"telefono\": \"123\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/usuarios/1/perfil",
           "host": [
             "{{base_url}}"
           ],
@@ -325,7 +434,6 @@
         },
         "url": {
           "raw": "{{base_url}}/api/usuarios/1/perfil",
-          "protocol": "http",
           "host": [
             "{{base_url}}"
           ],
@@ -344,6 +452,16 @@
     {
       "key": "base_url",
       "value": "http://localhost:4000",
+      "type": "string"
+    },
+    {
+      "key": "reset_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
       "type": "string"
     }
   ]
