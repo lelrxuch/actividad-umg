@@ -1,0 +1,468 @@
+{
+  "info": {
+    "_postman_id": "75fb8fb5-373e-4799-b909-6aee606719ed",
+    "name": "Becas API - Integración",
+    "description": "Colección de pruebas de integración para la Plataforma Nacional de Gestión de Becas.\n\nCómo correrla:\n1. Levantar el backend (npm run dev) con la base de datos local activa.\n2. Importar esta colección en Postman.\n3. Correr la carpeta completa en orden. La petición de forgot-password guarda el token de recuperación en la variable reset_token, que reset-password reutiliza.\n\nPendientes conocidos:\n- Los endpoints /api/auth/registro y /api/auth/login todavía no existen (PR #6 en progreso). Cuando entren, hay que agregar un pre-request de login que llene la variable jwt_token automáticamente.\n- Mientras tanto, la petición de perfil requiere pegar un JWT válido a mano en la variable jwt_token.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "58175203"
+  },
+  "item": [
+    {
+      "name": "GET /health - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Devuelve status ok', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('status', 'ok');",
+              "});",
+              "",
+              "pm.test('BD conectada', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('db', 'connected');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/auth/forgot-password - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Devuelve mensaje de confirmación', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('message');",
+              "});",
+              "",
+              "// tokenDebug solo lo devuelve el backend cuando NODE_ENV !== 'production'",
+              "// (ver password.controller.js). Por eso no se afirma su existencia: se",
+              "// guarda si viene, para que reset-password pueda encadenarse sin pegar",
+              "// el token a mano.",
+              "const cuerpo = pm.response.json();",
+              "if (cuerpo.tokenDebug) {",
+              "  pm.collectionVariables.set('reset_token', cuerpo.tokenDebug);",
+              "  console.log('reset_token guardado desde tokenDebug');",
+              "} else {",
+              "  console.log('Sin tokenDebug: o el correo no existe, o NODE_ENV=production.');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"email\": \"juan@miumg.edu.gt\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/forgot-password",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "forgot-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/auth/forgot-password - Error (Email vacío)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Devuelve mensaje de error', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"email\": \"\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/forgot-password",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "forgot-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/auth/reset-password - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Devuelve mensaje de éxito', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('message');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"token\": \"{{reset_token}}\",\r\n  \"nuevaContrasena\": \"NuevaPass123\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/reset-password",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "reset-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/auth/reset-password - Error (Token inválido)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Devuelve error de token inválido', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"token\": \"token-expirado-o-invalido\",\r\n  \"nuevaContrasena\": \"NuevaPass123\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/reset-password",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "reset-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/auth/reset-password - Error (Contraseña débil)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Rechaza contraseña sin mayúscula ni número', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"token\": \"{{reset_token}}\",\r\n  \"nuevaContrasena\": \"debilucha\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/reset-password",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "reset-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PUT /api/usuarios/:id/perfil - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Devuelve mensaje de éxito', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('mensaje');",
+              "});",
+              "",
+              "pm.test('Devuelve el usuario actualizado', () => {",
+              "  const usuario = pm.response.json().usuario;",
+              "  pm.expect(usuario).to.be.an('object');",
+              "  pm.expect(usuario).to.have.property('nombre', 'Juan Pérez Actualizado');",
+              "});",
+              "",
+              "// El controller desestructura correoAlterno (camelCase) del body, pero la",
+              "// columna en la base se llama correo_alterno. Esta aserción comprueba que el",
+              "// valor realmente llegó hasta la base: si alguien cambia el nombre del campo",
+              "// en un lado y no en el otro, la prueba falla en vez de pasar en falso.",
+              "pm.test('El correo alterno sí se guardó', () => {",
+              "  const usuario = pm.response.json().usuario;",
+              "  pm.expect(usuario.correo_alterno).to.eql('juan.nuevo@miumg.edu.gt');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"nombre\": \"Juan Pérez Actualizado\",\r\n  \"telefono\": \"87654321\",\r\n  \"correoAlterno\": \"juan.nuevo@miumg.edu.gt\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/usuarios/1/perfil",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "usuarios",
+            "1",
+            "perfil"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PUT /api/usuarios/:id/perfil - Error (Teléfono inválido)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Rechaza teléfono que no tiene 8 dígitos', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"telefono\": \"123\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/usuarios/1/perfil",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "usuarios",
+            "1",
+            "perfil"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PUT /api/usuarios/:id/perfil - Error (Sin token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 401 Unauthorized', () => {",
+              "  pm.response.to.have.status(401);",
+              "});",
+              "",
+              "pm.test('Devuelve error de autenticación', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"nombre\": \"Juan Intento\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/usuarios/1/perfil",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "usuarios",
+            "1",
+            "perfil"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:4000",
+      "type": "string"
+    },
+    {
+      "key": "reset_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
