@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import { pool } from './config/db.js';
+import authRoutes from './routes/auth.routes.js';
 import passwordRoutes from './routes/password.routes.js';
 import usuariosRoutes from './routes/usuarios.js';  // ← NUEVA
 
@@ -20,6 +21,10 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// Ambos routers cuelgan de /api/auth y no chocan: authRoutes expone
+// /register, /login y /perfil; passwordRoutes expone /forgot-password y
+// /reset-password.
+app.use('/api/auth', authRoutes);
 app.use('/api/auth', passwordRoutes);
 app.use('/api/usuarios', usuariosRoutes);  // ← NUEVA
 
