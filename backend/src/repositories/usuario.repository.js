@@ -1,10 +1,30 @@
-// [EN PROGRESO]
-// Acceso a datos de Usuario (necesario para recuperar contraseña)
+// Acceso a datos de Usuario.
 import { pool } from '../config/db.js';
 
 export async function findByEmail(email) {
   const result = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
   return result.rows[0] || null;
+}
+
+/**
+ * Inserta un usuario nuevo.
+ *
+ * `nombre` es NOT NULL en el esquema, por eso es obligatorio aquí. No devuelve
+ * password_hash: nada fuera de este módulo necesita verlo.
+ *
+ * @param {string} nombre
+ * @param {string} email Ya normalizado por el service.
+ * @param {string} passwordHash Hash de bcrypt, nunca la contraseña en claro.
+ * @returns {Promise<{id: number, nombre: string, email: string, rol: string, creado_en: Date}>}
+ */
+export async function crearUsuario(nombre, email, passwordHash) {
+  const result = await pool.query(
+    `INSERT INTO usuarios (nombre, email, password_hash)
+     VALUES ($1, $2, $3)
+     RETURNING id, nombre, email, rol, creado_en`,
+    [nombre, email, passwordHash]
+  );
+  return result.rows[0];
 }
 
 export async function saveResetToken(userId, tokenHash, expiraEn) {
