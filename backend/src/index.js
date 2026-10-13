@@ -4,6 +4,7 @@ import { pool } from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
 import passwordRoutes from './routes/password.routes.js';
 import usuariosRoutes from './routes/usuarios.js';  // ← NUEVA
+import solicitudRoutes from './routes/solicitud.routes.js';
 import expedienteRoutes from './routes/expediente.routes.js';
 import documentoRoutes from './routes/documento.routes.js';
 
@@ -29,6 +30,7 @@ app.get('/health', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/auth', passwordRoutes);
 app.use('/api/usuarios', usuariosRoutes);  // ← NUEVA
+app.use('/api/solicitudes', solicitudRoutes);
 app.use('/api/expedientes', expedienteRoutes);
 app.use('/api/documentos', documentoRoutes);
 
