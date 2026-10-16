@@ -15,14 +15,9 @@ export const LoginPage = () => {
     e.preventDefault();
     setErrorMessage('');
 
-    const dominiosValidos = ['@miumg.edu.gt', '@mineduc.gob.gt', '@usac.edu.gt'];
-    const esDominioValido = dominiosValidos.some(dominio => email.toLowerCase().endsWith(dominio));
-
-    if (!esDominioValido) {
-      setErrorMessage('Error: Debe ingresar un correo institucional (.edu.gt / .gob.gt).');
-      return;
-    }
-
+    // El formato de correo lo valida el input type="email". Qué dominios se
+    // aceptan lo decide el backend (ALLOWED_EMAIL_DOMAINS) y su mensaje de
+    // error se muestra tal cual en el catch.
     setIsLoading(true);
 
     try {
