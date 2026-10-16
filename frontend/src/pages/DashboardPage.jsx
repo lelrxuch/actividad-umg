@@ -1,0 +1,47 @@
+// src/pages/DashboardPage.jsx
+// Página mínima a la que llega el usuario después de iniciar sesión.
+import { Navigate, useNavigate } from 'react-router-dom';
+import { theme } from '../styles/theme';
+
+function leerUsuario() {
+  try {
+    return JSON.parse(localStorage.getItem('user')) || null;
+  } catch {
+    return null;
+  }
+}
+
+export const DashboardPage = () => {
+  const navigate = useNavigate();
+  const token = localStorage.getItem('token');
+  const usuario = leerUsuario();
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login', { replace: true });
+  };
+
+  return (
+    <div style={styles.card}>
+      <h2 style={styles.title}>Bienvenido{usuario?.nombre ? `, ${usuario.nombre}` : ''}</h2>
+      {usuario?.email && <p style={styles.text}>{usuario.email}</p>}
+      {usuario?.rol && <p style={styles.text}>Rol: {usuario.rol}</p>}
+
+      <button type="button" onClick={handleLogout} style={styles.button}>
+        Cerrar sesión
+      </button>
+    </div>
+  );
+};
+
+const styles = {
+  card: { backgroundColor: theme.colors.cardBg, padding: '2.5rem', borderRadius: theme.borderRadius.lg, boxShadow: theme.shadows.card, width: '100%', maxWidth: '420px', borderTop: `6px solid ${theme.colors.primary}`, textAlign: 'center' },
+  title: { fontSize: '1.4rem', color: theme.colors.secondary, fontWeight: 'bold', margin: '0 0 0.5rem 0' },
+  text: { fontSize: '0.9rem', color: theme.colors.textSecondary, margin: '0.25rem 0' },
+  button: { width: '100%', padding: '0.85rem', backgroundColor: theme.colors.primary, color: '#ffffff', border: 'none', borderRadius: theme.borderRadius.md, fontSize: '0.95rem', fontWeight: '600', cursor: 'pointer', marginTop: '1.5rem' }
+};
