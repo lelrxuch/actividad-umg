@@ -39,7 +39,11 @@ export const RegisterPage = () => {
       await registerUser({ nombre, email, password });
 
       setSuccessMessage('¡Registro exitoso! Redirigiendo al inicio de sesión...');
-      navigate('/login');
+
+      // Timeout para permitir que el usuario visualice el mensaje de éxito antes de redirigir
+      setTimeout(() => {
+        navigate('/login');
+      }, 1500);
 
     } catch (error) {
       setErrorMessage(error.message || 'Error al registrar usuario. Verifique los datos ingresados.');
@@ -75,15 +79,16 @@ export const RegisterPage = () => {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Correo Electrónico:</label>
+            <label style={styles.label}>Correo Institucional:</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="usuario@dominio.com"
+              placeholder="usuario@miumg.edu.gt"
               required
               style={styles.input}
             />
+            <small style={styles.hint}>Ejemplo: usuario@miumg.edu.gt o @mineduc.gob.gt</small>
           </div>
 
           <div style={styles.formGroup}>

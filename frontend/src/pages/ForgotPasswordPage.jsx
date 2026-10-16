@@ -32,7 +32,7 @@ export const ForgotPasswordPage = () => {
       <div style={styles.card}>
         <h2 style={styles.title}>Recuperar Contraseña</h2>
         <p style={styles.description}>
-          Ingrese su correo electrónico registrado y le enviaremos un enlace para restablecer su contraseña.
+          Ingrese su correo institucional registrado y le enviaremos un enlace para restablecer su contraseña.
         </p>
 
         {errorMessage && <div style={styles.errorAlert}>{errorMessage}</div>}
@@ -40,12 +40,12 @@ export const ForgotPasswordPage = () => {
 
         <form onSubmit={handleResetRequest}>
           <div style={styles.formGroup}>
-            <label style={styles.label}>Correo Electrónico:</label>
+            <label style={styles.label}>Correo Institucional:</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="usuario@dominio.com"
+              placeholder="usuario@miumg.edu.gt"
               required
               style={styles.input}
             />
