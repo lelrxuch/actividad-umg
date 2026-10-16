@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import { pool } from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
@@ -12,6 +13,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Sin esto el navegador bloquea toda llamada del frontend (otro puerto = otro
+// origen). El origen sale del .env para no dejar una URL escrita en el código.
+app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
 app.use(express.json());
 
 app.get('/health', async (req, res) => {
