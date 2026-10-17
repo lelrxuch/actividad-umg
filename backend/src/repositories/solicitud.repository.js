@@ -53,3 +53,18 @@ export async function actualizarEstado(id, estado) {
 
   return resultado.rows[0] || null;
 }
+
+
+/**
+ * Lista las solicitudes pertenecientes a un estudiante.
+ * @param {number} estudianteId
+ * @returns {Promise<Array<{id: number, estudiante_id: number, estado: string, creado_en: Date, actualizado_en: Date}>>}
+ */
+export async function listarPorEstudiante(estudianteId) {
+  const resultado = await pool.query(
+    'SELECT id, estudiante_id, estado, creado_en, actualizado_en FROM solicitudes WHERE estudiante_id = $1 ORDER BY creado_en DESC',
+    [estudianteId]
+  );
+
+  return resultado.rows;
+}
