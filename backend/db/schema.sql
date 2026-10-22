@@ -97,3 +97,14 @@ CREATE TABLE IF NOT EXISTS solicitud_evaluadores (
 
 -- La tabla `expedientes` NO se crea: expediente.service.js arma el expediente en
 -- memoria y expediente.repository.js es un stub. Se define en SCRUM-43.
+-- ---------------------------------------------------------------------------
+-- Un solo documento de cada tipo por solicitud (SCRUM-42).
+--
+-- El expediente se valida contando tipos: dos filas 'titulo' en la misma
+-- solicitud harian que ExpedienteBuilder lo diera por completo con un papel
+-- repetido y otro ausente. La regla se aplica en la base y no solo en el
+-- service, porque la base es el unico punto por el que pasan todas las
+-- escrituras.
+-- ---------------------------------------------------------------------------
+CREATE UNIQUE INDEX IF NOT EXISTS idx_documentos_solicitud_tipo
+    ON documentos (solicitud_id, tipo);
