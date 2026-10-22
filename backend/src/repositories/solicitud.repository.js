@@ -35,12 +35,12 @@ export async function findById(id) {
  * @param {number} estudianteId
  * @param {string} estado Nombre del estado inicial.
  */
-export async function crear(estudianteId, estado) {
+export async function crear(estudianteId, estado, { tipo = null, convocatoriaId = null } = {}) {
   const resultado = await pool.query(
-    `INSERT INTO solicitudes (estudiante_id, estado)
-     VALUES ($1, $2)
-     RETURNING id, estudiante_id, estado, creado_en`,
-    [estudianteId, estado]
+    `INSERT INTO solicitudes (estudiante_id, estado, tipo, convocatoria_id)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, estudiante_id, estado, tipo, convocatoria_id, creado_en`,
+    [estudianteId, estado, tipo, convocatoriaId]
   );
 
   return resultado.rows[0];
