@@ -68,3 +68,47 @@ export async function consultarPermiso(req, res) {
     responderError(res, error);
   }
 }
+
+/**
+ * POST /api/documentos
+ * multipart/form-data: campo `archivo` + campos `solicitudId` y `tipo`.
+ *
+ * 201 con la fila creada. 400 si falta el archivo o el tipo no corresponde a
+ * la modalidad, 403 si la solicitud no es suya, 404 si no existe, 409 si ya
+ * hay un documento de ese tipo o la solicitud ya se envió.
+ */
+export async function subirDocumento(req, res) {
+  try {
+    const { solicitudId, tipo } = req.body || {};
+
+    const documento = await documentoService.subirDocumento({
+      solicitudId: Number(solicitudId),
+      tipo,
+      archivo: req.file
+        ? { nombreOriginal: req.file.originalname, contenido: req.file.buffer }
+        : null,
+      usuario: solicitante(req),
+    });
+
+    res.status(201).json({ documento });
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
+/**
+ * GET /api/documentos/solicitud/:solicitudId
+ *
+ * Lo que el estudiante lleva subido. No devuelve rutas de archivo: solo id,
+ * tipo y nombre visible, que es lo que la pantalla necesita para marcar el
+ * avance del expediente.
+ */
+export async function listarDocumentos(req, res) {
+  try {
+    res.json(
+      await documentoService.listarDocumentos(Number(req.params.solicitudId), solicitante(req))
+    );
+  } catch (error) {
+    responderError(res, error);
+  }
+}

@@ -9,12 +9,21 @@ import { pool } from '../config/db.js';
 
 /**
  * Busca una solicitud por su identificador.
+ *
+ * `tipo` se incluye desde SCRUM-42: es la modalidad de beca y es lo que decide
+ * qué documentos admite el expediente. Mientras no se seleccionaba, la
+ * validación de tipo de documento recibía `undefined` y dejaba pasar cualquier
+ * papel, aunque las pruebas que la mockeaban dieran verde.
+ *
  * @param {number} id
- * @returns {Promise<{id: number, estudiante_id: number, estado: string}|null>}
+ * @returns {Promise<{id: number, estudiante_id: number, estado: string,
+ *   tipo: string|null}|null>}
  */
 export async function findById(id) {
   const resultado = await pool.query(
-    'SELECT id, estudiante_id, estado, creado_en, actualizado_en FROM solicitudes WHERE id = $1',
+    `SELECT id, estudiante_id, estado, tipo, creado_en, actualizado_en
+       FROM solicitudes
+      WHERE id = $1`,
     [id]
   );
 
