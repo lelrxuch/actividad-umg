@@ -14,6 +14,7 @@ import { Solicitud, crearEstadoDesdeNombre } from '../patterns/state/index.js';
 import { EmailNotificationListener } from '../patterns/observer/EmailNotificationListener.js';
 import { SolicitudFactory } from '../patterns/creational/SolicitudFactory.js';
 import { autorizar, ACCIONES } from './solicitud.autorizacion.js';
+import { exigirConvocatoriaAbierta } from './convocatoria.service.js';
 
 /**
  * Reconstruye el objeto de dominio a partir de la fila de base de datos y le
@@ -95,17 +96,35 @@ async function aplicarTransicion(id, accion, opciones = {}) {
  *   documentación que el estudiante deberá reunir.
  * @throws {Error & { status: number }} 400 si la modalidad no existe.
  */
-export async function crearSolicitud(estudianteId, tipo) {
+export async function crearSolicitud(estudianteId, tipo, { convocatoriaId = null } = {}) {
   const modalidad = SolicitudFactory.crearSolicitud(tipo);
+
+  // La convocatoria es opcional: se puede solicitar una beca fuera de
+  // convocatoria. Cuando viene, tiene que estar publicada, dentro de su periodo
+  // y admitir esta modalidad; lo comprueba convocatoria.service antes de que se
+  // escriba la fila, para no dejar una solicitud colgada de una convocatoria
+  // cerrada.
+  if (convocatoriaId !== null && convocatoriaId !== undefined) {
+    await exigirConvocatoriaAbierta(convocatoriaId, tipo);
+  }
+
   const borrador = new Solicitud({ estudiante: estudianteId });
 
-  // ponytail: la fila solo guarda el estado. La modalidad se devuelve pero no se
-  // persiste porque `solicitudes` no tiene columna `tipo`; persistirla cuando
-  // el esquema la tenga.
-  const fila = await solicitudRepository.crear(estudianteId, borrador.nombreEstado);
+  // `tipo` se persiste desde SCRUM-32: la columna existe desde la migración de
+  // SCRUM-59 pero no se estaba llenando, así que toda solicitud quedaba con
+  // tipo NULL. Eso dejaba sin efecto la validación de tipo de documento de
+  // SCRUM-42, que deduce de ahí qué papeles admite el expediente.
+  const fila = await solicitudRepository.crear(estudianteId, borrador.nombreEstado, {
+    tipo,
+    convocatoriaId: convocatoriaId ?? null,
+  });
 
   borrador.id = fila.id;
-  return { ...borrador.toJSON(), ...modalidad.toJSON() };
+  return {
+    ...borrador.toJSON(),
+    ...modalidad.toJSON(),
+    convocatoriaId: fila.convocatoria_id ?? null,
+  };
 }
 
 /**

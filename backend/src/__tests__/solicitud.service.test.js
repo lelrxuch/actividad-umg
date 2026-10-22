@@ -46,7 +46,13 @@ describe('solicitud.service — integración de los patrones State y Observer', 
       // SolicitudFactory; el estado inicial lo sigue fijando el patrón State.
       const creada = await solicitudService.crearSolicitud(3, 'universitaria');
 
-      expect(solicitudRepository.crear).toHaveBeenCalledWith(3, 'Borrador');
+      // Desde SCRUM-32 la modalidad SI se persiste: la columna existia desde la
+      // migracion de SCRUM-59 y quedaba en NULL, lo que dejaba sin efecto la
+      // validacion de tipo de documento de SCRUM-42.
+      expect(solicitudRepository.crear).toHaveBeenCalledWith(3, 'Borrador', {
+        tipo: 'universitaria',
+        convocatoriaId: null,
+      });
       expect(creada).toMatchObject({ id: 99, estado: 'Borrador', accionesPermitidas: ['enviar'] });
     });
   });

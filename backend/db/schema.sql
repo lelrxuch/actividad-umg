@@ -108,3 +108,76 @@ CREATE TABLE IF NOT EXISTS solicitud_evaluadores (
 -- ---------------------------------------------------------------------------
 CREATE UNIQUE INDEX IF NOT EXISTS idx_documentos_solicitud_tipo
     ON documentos (solicitud_id, tipo);
+
+-- ---------------------------------------------------------------------------
+-- convocatorias (SCRUM-32, SCRUM-33)
+--
+-- Los valores de `estado` se comparan en el codigo por coincidencia exacta de
+-- cadena, igual que en `solicitudes`:
+--   backend/src/patterns/state/convocatoria/index.js (crearEstadoDesdeNombre)
+-- Cambiar una tilde, un espacio o una mayuscula rompe el patron State.
+--
+-- `modalidades` es un arreglo de los tipos de beca que la convocatoria admite,
+-- con los mismos valores que `solicitudes.tipo`. No lleva CHECK porque la lista
+-- valida la decide SolicitudFactory y duplicarla aqui la dejaria desincronizada;
+-- la validacion vive en convocatoria.service, que le pregunta a la fabrica.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS convocatorias (
+    id SERIAL PRIMARY KEY,
+    titulo VARCHAR(255) NOT NULL,
+    descripcion TEXT,
+    fecha_apertura DATE,
+    fecha_cierre DATE,
+    modalidades TEXT[] NOT NULL DEFAULT '{}',
+    estado VARCHAR(30) NOT NULL DEFAULT 'Borrador',
+    creada_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+         WHERE conname = 'convocatorias_estado_check'
+           AND conrelid = 'convocatorias'::regclass
+    ) THEN
+        ALTER TABLE convocatorias ADD CONSTRAINT convocatorias_estado_check
+            CHECK (estado IN ('Borrador', 'Publicada', 'Cerrada'));
+    END IF;
+END $$;
+
+-- El cierre nunca puede ser anterior a la apertura. Se aplica en la base y no
+-- solo en el service porque una convocatoria con fechas invertidas no se podria
+-- cerrar ni interpretar despues.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+         WHERE conname = 'convocatorias_fechas_check'
+           AND conrelid = 'convocatorias'::regclass
+    ) THEN
+        ALTER TABLE convocatorias ADD CONSTRAINT convocatorias_fechas_check
+            CHECK (fecha_apertura IS NULL
+                OR fecha_cierre IS NULL
+                OR fecha_cierre >= fecha_apertura);
+    END IF;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- La solicitud puede pertenecer a una convocatoria.
+--
+-- Nullable a proposito: las solicitudes que ya existen no tienen convocatoria,
+-- y el flujo de crear una solicitud sin convocatoria sigue funcionando. Cuando
+-- viene, convocatoria.service comprueba que este publicada, dentro de fechas y
+-- que admita la modalidad pedida.
+--
+-- ON DELETE SET NULL y no CASCADE: borrar una convocatoria no puede borrar las
+-- solicitudes de los estudiantes.
+-- ---------------------------------------------------------------------------
+ALTER TABLE solicitudes
+    ADD COLUMN IF NOT EXISTS convocatoria_id INTEGER
+    REFERENCES convocatorias(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_solicitudes_convocatoria
+    ON solicitudes (convocatoria_id);

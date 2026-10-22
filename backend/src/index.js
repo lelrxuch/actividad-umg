@@ -5,6 +5,7 @@ import { pool } from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
 import passwordRoutes from './routes/password.routes.js';
 import usuarioRoutes from './routes/usuario.routes.js'; // ← MODIFICADA
+import convocatoriaRoutes from './routes/convocatoria.routes.js';
 import solicitudRoutes from './routes/solicitud.routes.js';
 import expedienteRoutes from './routes/expediente.routes.js';
 import documentoRoutes from './routes/documento.routes.js';
@@ -34,6 +35,7 @@ app.get('/health', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/auth', passwordRoutes);
 app.use('/api/usuarios', usuarioRoutes); // ← MODIFICADA
+app.use('/api/convocatorias', convocatoriaRoutes);
 app.use('/api/solicitudes', solicitudRoutes);
 app.use('/api/expedientes', expedienteRoutes);
 app.use('/api/documentos', documentoRoutes);
