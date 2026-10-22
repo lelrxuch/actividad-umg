@@ -88,10 +88,16 @@ function extensionSegura(nombreOriginal) {
  *   guarda en `documentos.ruta_archivo` y la que luego lee {@link leerArchivo}.
  */
 export async function guardarArchivo({ solicitudId, tipo, nombreOriginal, contenido }) {
-  const carpeta = path.join('exp', String(Number(solicitudId)));
+  // path.posix y no path.join: esta ruta se GUARDA en documentos.ruta_archivo.
+  // path.join usa el separador del sistema, así que en Windows quedaría
+  // "exp\7\dni-...", y esa fila no resolvería en Linux, donde la barra
+  // invertida es un carácter de nombre válido y no un separador. La ruta
+  // almacenada es siempre POSIX; path.resolve acepta barras normales también
+  // en Windows, así que la lectura funciona en los dos.
+  const carpeta = path.posix.join('exp', String(Number(solicitudId)));
   const sufijo = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const nombreEnDisco = `${String(tipo).replace(/[^a-z0-9-]/gi, '')}-${sufijo}${extensionSegura(nombreOriginal)}`;
-  const relativa = path.join(carpeta, nombreEnDisco);
+  const relativa = path.posix.join(carpeta, nombreEnDisco);
 
   // La ruta se construyó acá, pero se verifica igual: si algún día este cálculo
   // cambia, la comprobación es lo que evita escribir fuera del directorio.

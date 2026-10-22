@@ -334,6 +334,10 @@ describe('almacenamiento — el nombre en disco no lo decide el navegador', () =
 
     expect(relativa).not.toContain('..');
     expect(relativa.startsWith('exp/7/')).toBe(true);
+    // La ruta se guarda en documentos.ruta_archivo, así que tiene que ser la
+    // misma en toda máquina: una fila escrita en Windows con "exp\7\..." no
+    // resolvería en Linux. Esta aserción es la que atrapa el path.join nativo.
+    expect(relativa).not.toContain('\\');
 
     const completa = path.resolve(DIRECTORIO_SUBIDAS, relativa);
     expect(completa.startsWith(DIRECTORIO_SUBIDAS)).toBe(true);
