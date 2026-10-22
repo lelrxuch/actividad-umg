@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { ConvocatoriasPage } from './pages/ConvocatoriasPage';
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
         {/* Envoltorio General con Navbar y Footer */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/convocatorias" element={<ConvocatoriasPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/registro" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
