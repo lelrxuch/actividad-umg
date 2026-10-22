@@ -176,6 +176,15 @@ else
     echo "   El evaluador asignado puede dictaminar, pero no sobre un Borrador:"
     comparar "evaluador dictamina un Borrador" "409" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/dictamen" \
       -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_EV_SI" -d '{"aprobado":true}')"
+    # SCRUM-39: no se envía un expediente incompleto. Una solicitud
+    # universitaria exige dni, titulo y carta; hasta aquí solo tiene el dni.
+    for faltante in titulo carta; do
+      ARCH=$(mktemp /tmp/${faltante}-demo-XXXXXX.pdf)
+      printf '%%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%%%EOF\n' > "$ARCH"
+      comparar "subir $faltante" "201" "$(codigo -X POST "$API/api/documentos" -H "Authorization: Bearer $TK_DUENO" \
+        -F "solicitudId=$ID_SOL" -F "tipo=$faltante" -F "archivo=@$ARCH;type=application/pdf")"
+      rm -f "$ARCH"
+    done
     echo "   Ahora el ciclo en orden: Borrador → Enviada → En Evaluación → Aprobada"
     comparar "el dueño envía"            "200" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/enviar"  -H "Authorization: Bearer $TK_DUENO")"
     comparar "el evaluador pasa a evaluar" "200" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/evaluar" -H "Authorization: Bearer $TK_EV_SI")"
