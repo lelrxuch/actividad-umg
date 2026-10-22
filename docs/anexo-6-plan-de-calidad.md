@@ -77,7 +77,7 @@ que nadie siguió no es un manual verificado.**
 |---|---|
 | Código de la aplicación | Limpio, mantenible, legible, con las capas respetadas |
 | Scripts de base de datos | Versionados e **idempotentes**: `schema.sql` se puede re-aplicar sobre una base con datos sin error y sin pérdida |
-| Código de pruebas | Que exista, que cubra la lógica de negocio y que **falle cuando el código se rompe** |
+| Código de pruebas | Que exista, que cubra la lógica de negocio y que **falle cuando el código se rompe**. Las 19 pruebas del frontend no cumplen este criterio: no importan código de producción (ver §4.5) |
 
 ### 3.3 Incremento del producto
 
@@ -151,7 +151,7 @@ completa si no lo cumple entero.
 | | Punto del DoD | ¿Se cumple? |
 |---|---|---|
 | 1 | El código está en la rama `develop` del repositorio | **Sí.** Todo entra por Pull Request |
-| 2 | Se crearon y pasan todas las pruebas unitarias correspondientes | **Sí.** 314 pruebas en el backend, 19 en el frontend |
+| 2 | Se crearon y pasan todas las pruebas unitarias correspondientes | **Solo en el backend:** 314 pruebas. **En el frontend NO se cumple**: los 2 archivos de prueba que existen no importan código de producción y no pueden fallar. Cobertura real del frontend: cero |
 | 3 | El código fue revisado y aprobado por al menos otro miembro | **Sí.** Ningún PR se mergea sin aprobación |
 | 4 | La funcionalidad cumple todos los Criterios de Aceptación | **Sí**, verificado en la Sprint Review |
 | 5 | No se introdujeron nuevos defectos | **Parcial.** La suite de regresión lo cubre, pero nada lo verifica mecánicamente: no hay CI |
@@ -177,6 +177,34 @@ y la decisión le corresponde al Product Owner:
 El equipo recomienda **(b)** para lo que resta del curso, y dejar **(a)**
 registrada como mejora. Lo que no es aceptable es mantener escrito un punto que
 nadie cumple.
+
+#### Las 19 pruebas del frontend no verifican nada
+
+Se descubrió al revisar los archivos para redactar este plan, y obliga a
+corregir el punto 2 de la tabla anterior.
+
+Los dos archivos de prueba del frontend —`usuarioService.test.js` y
+`passwordService.test.js`— **no importan un solo módulo de producción**. Su
+único `import` es de `vitest`, y cada aserción compara literales escritos
+dentro de la propia prueba:
+
+```js
+const password = 'Contraseña123';
+const confirmPassword = 'Contraseña123';
+expect(password === confirmPassword).toBe(true);
+```
+
+Eso afirma que `'Contraseña123' === 'Contraseña123'`. **No puede fallar nunca**,
+ni aunque se borre el frontend completo.
+
+Es precisamente el error contra el que existe la sección 2.3 de este plan: se
+contaron 19 pruebas como evidencia de calidad sin comprobar que verificaran
+algo. **La cobertura real del frontend es cero**, y el total honesto del
+proyecto es 314 pruebas, no 333.
+
+Entra como la mejora de mayor prioridad del frontend: escribir pruebas que
+importen `services/authService.js` y las pantallas, y demostrar con un mutante
+que fallan.
 
 #### Dos incumplimientos más, declarados
 
@@ -459,6 +487,11 @@ Todos, sin excepción:
 | 6 | **ESLint en el backend** | Es donde vive toda la lógica y no tiene análisis estático | Un archivo de configuración |
 | 7 | **Medición de cobertura** | La verificación por mutación demuestra que lo probado sirve, pero no dice qué quedó sin probar | Configuración de Vitest |
 | 8 | **Pruebas automatizadas contra PostgreSQL real** | Hoy ninguna prueba ejecuta SQL: el repositorio siempre está mockeado | Alto. Requiere base de datos en el entorno de pruebas |
+
+### 10.1 Mejora que se adelanta a la lista: pruebas reales en el frontend
+
+Entra por encima de las ocho anteriores porque hoy **el frontend no está
+verificado en absoluto** y eso no se sabía. Ver §4.5.
 
 ---
 
