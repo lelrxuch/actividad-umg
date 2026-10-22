@@ -411,6 +411,7 @@ que nadie midió haría inservible esta tabla.
 | # | Requisito | Estado |
 |---|---|---|
 | M-1 | Una regla de negocio se puede probar sin levantar servidor ni base de datos | **Verificado**: 126 pruebas no usan ningún mock porque el dominio no tiene dependencias externas |
+| M-5 | El código del cliente está cubierto por pruebas | **No se cumple**: los 2 archivos de prueba del frontend no importan código de producción y no pueden fallar. Cobertura real: cero |
 | M-2 | Cambiar el proveedor de validación de identidad no obliga a tocar la lógica de negocio | **Verificado por necesidad**: el proyecto avanza sin credenciales de RENAP |
 | M-3 | Toda transición de estado queda asociada a un actor con derecho a pedirla | **Verificado**: sin actor identificable no se autoriza nada (falla cerrado) |
 | M-4 | Un error de consulta SQL se detecta automáticamente | **No se cumple**: ninguna prueba automatizada ejecuta SQL. Es la deuda técnica más seria del proyecto |
@@ -436,7 +437,8 @@ a **cada** Historia, sin excepciones.
 - [ ] **4.** La funcionalidad cumple todos los Criterios de Aceptación de la
       Historia.
 - [ ] **5.** No se introdujeron nuevos defectos: la suite completa pasa, en
-      Windows y en Linux.
+      Windows y en Linux. *(Hoy esto solo cubre el backend: el frontend no
+      tiene pruebas reales.)*
 - [ ] **6.** La documentación técnica necesaria fue creada o actualizada.
 - [ ] **7.** La funcionalidad fue desplegada en el entorno de pruebas/staging y
       verificada por el Product Owner.
