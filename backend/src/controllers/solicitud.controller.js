@@ -2,12 +2,28 @@
 import * as solicitudService from '../services/solicitud.service.js';
 import * as solicitudRepository from '../repositories/solicitud.repository.js';
 
-/** Convierte un error de negocio en respuesta HTTP. */
+/**
+ * Convierte un error de negocio en respuesta HTTP.
+ *
+ * Un error SIN `status` es inesperado, y su mensaje no sale al cliente: los de
+ * PostgreSQL traen nombres de tabla y de restricción. Solo los errores de
+ * negocio, que llevan status a propósito, hablan con el usuario.
+ */
 function responderError(res, error) {
-  const status = error.status || 500;
   return res
-    .status(status)
-    .json({ error: error.message || 'Error interno del servidor.' });
+    .status(error.status || 500)
+    .json({ error: error.status ? error.message : 'Error interno del servidor.' });
+}
+
+/**
+ * Quien hace la petición, en la forma que espera la capa de autorización.
+ *
+ * El JWT guarda el identificador en `sub`; el dominio lo llama `id`. Sin esta
+ * traducción el dueño de una solicitud no se reconoce como tal.
+ */
+function solicitante(req) {
+  const token = req.usuario || {};
+  return { id: token.sub ?? token.id, rol: token.rol };
 }
 
 /**
@@ -39,7 +55,7 @@ export function listarDocumentos(req, res) {
  */
 export async function crear(req, res) {
   try {
-    const estudianteId = req.usuario.sub; // sub del token JWT
+    const estudianteId = solicitante(req).id;
     const { tipo } = req.body;
 
     if (!tipo) {
@@ -59,7 +75,7 @@ export async function crear(req, res) {
  */
 export async function listarMisSolicitudes(req, res) {
   try {
-    const estudianteId = req.usuario.sub;
+    const estudianteId = solicitante(req).id;
     const solicitudes = await solicitudRepository.listarPorEstudiante(estudianteId);
     res.json(solicitudes);
   } catch (error) {
@@ -74,7 +90,7 @@ export async function listarMisSolicitudes(req, res) {
 export async function obtenerPorId(req, res) {
   try {
     const { id } = req.params;
-    const solicitud = await solicitudService.obtenerSolicitud(Number(id));
+    const solicitud = await solicitudService.obtenerSolicitud(Number(id), solicitante(req));
     res.json(solicitud);
   } catch (error) {
     responderError(res, error);
@@ -88,7 +104,9 @@ export async function obtenerPorId(req, res) {
 export async function enviar(req, res) {
   try {
     const { id } = req.params;
-    const resultado = await solicitudService.enviarSolicitud(Number(id));
+    const resultado = await solicitudService.enviarSolicitud(Number(id), {
+      usuario: solicitante(req),
+    });
     res.json(resultado);
   } catch (error) {
     responderError(res, error);
@@ -102,7 +120,9 @@ export async function enviar(req, res) {
 export async function evaluar(req, res) {
   try {
     const { id } = req.params;
-    const resultado = await solicitudService.evaluarSolicitud(Number(id));
+    const resultado = await solicitudService.evaluarSolicitud(Number(id), {
+      usuario: solicitante(req),
+    });
     res.json(resultado);
   } catch (error) {
     responderError(res, error);
@@ -122,7 +142,9 @@ export async function dictaminar(req, res) {
       return res.status(400).json({ error: 'El campo "aprobado" es requerido y debe ser booleano.' });
     }
 
-    const resultado = await solicitudService.dictaminarSolicitud(Number(id), aprobado);
+    const resultado = await solicitudService.dictaminarSolicitud(Number(id), aprobado, {
+      usuario: solicitante(req),
+    });
     res.json(resultado);
   } catch (error) {
     responderError(res, error);
