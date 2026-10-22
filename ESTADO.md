@@ -8,8 +8,8 @@ corregirla es parte del punto 6 del DoD.
 conectado o le falta una parte · `STUB` archivo creado sin lógica · `FALTANTE`
 ni archivo hay
 
-**Resumen:** 26 endpoints · 314 pruebas en 19 archivos (backend) · 19 en 2
-(frontend) · los 6 patrones de diseño implementados
+**Resumen:** 26 endpoints · 314 pruebas en 19 archivos (backend) · los 6
+patrones de diseño implementados · **el frontend no tiene pruebas reales**
 
 ---
 
@@ -98,7 +98,7 @@ Justificación de cada uno: `docs/justificacion-patrones.md`.
 |---|---|
 | Login, registro y recuperación de contraseña | LISTO, conectado al backend real |
 | Pantalla de perfil | LISTO |
-| Pruebas de los servicios del cliente | LISTO, 19 pruebas |
+| Pruebas del cliente | **NO EXISTEN.** Los 2 archivos en `src/__tests__/` no importan código de producción: solo comparan literales escritos dentro de la prueba, así que no pueden fallar. Cobertura real: cero |
 | Convocatorias, solicitudes, expedientes, bandeja del evaluador | **FALTANTE** |
 
 > El cliente consume hoy **3 de los 26 endpoints**. Es la brecha más grande que
@@ -117,6 +117,7 @@ Justificación de cada uno: `docs/justificacion-patrones.md`.
 | `npm audit`: 4 vulnerabilidades en el backend, 1 crítica | ANEXO 6 §10 |
 | ESLint solo en el frontend | ANEXO 6 §4.3 |
 | JWT sin revocación | ANEXO 5 §2.2 trade-off 5 |
+| Las 19 pruebas del frontend no importan código de producción y no pueden fallar | ANEXO 6 §4.5, ANEXO 7 §6.2 |
 
 ---
 
