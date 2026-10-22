@@ -6,6 +6,8 @@ import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ConvocatoriasPage } from './pages/ConvocatoriasPage';
+import { SolicitudPage } from './pages/SolicitudPage';
+import { MisSolicitudesPage } from './pages/MisSolicitudesPage';
 
 export default function App() {
   return (
@@ -15,6 +17,8 @@ export default function App() {
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/convocatorias" element={<ConvocatoriasPage />} />
+          <Route path="/solicitudes" element={<MisSolicitudesPage />} />
+          <Route path="/solicitudes/:id" element={<SolicitudPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/registro" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />

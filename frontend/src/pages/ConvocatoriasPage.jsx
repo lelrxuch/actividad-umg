@@ -6,16 +6,13 @@
 //   - Muestra los dias restantes para el cierre.
 //   - Si no hay convocatorias abiertas, muestra un mensaje, NO una tabla vacia.
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { listarConvocatorias } from '../services/convocatoriaService';
+import { crearSolicitud } from '../services/solicitudService';
 import { periodo, formatearFecha } from '../utils/fechas';
+import { nombreModalidad } from '../utils/catalogos';
+import { haySesion } from '../utils/sesion';
 import { theme } from '../styles/theme';
-
-/** Etiqueta legible de cada modalidad de beca. */
-const NOMBRE_MODALIDAD = {
-  'nivel-medio': 'Nivel medio',
-  universitaria: 'Universitaria',
-  posgrado: 'Posgrado',
-};
 
 export const ConvocatoriasPage = () => {
   const [convocatorias, setConvocatorias] = useState([]);
@@ -126,7 +123,7 @@ const TarjetaConvocatoria = ({ convocatoria }) => {
           <dt style={styles.datoEtiqueta}>Modalidades</dt>
           <dd style={styles.datoValor}>
             {(convocatoria.modalidades ?? [])
-              .map((m) => NOMBRE_MODALIDAD[m] ?? m)
+              .map(nombreModalidad)
               .join(' · ') || '—'}
           </dd>
         </div>
@@ -139,15 +136,70 @@ const TarjetaConvocatoria = ({ convocatoria }) => {
         que todavia no abre y recibiria un 409.
       */}
       {convocatoria.recibeSolicitudes ? (
-        <button type="button" style={styles.botonAplicar}>
-          Iniciar solicitud
-        </button>
+        <IniciarSolicitud convocatoria={convocatoria} />
       ) : (
         <p style={styles.noDisponible}>
           Esta convocatoria no está recibiendo solicitudes en este momento.
         </p>
       )}
     </li>
+  );
+};
+
+/**
+ * Inicia una solicitud a la convocatoria.
+ *
+ * Sin sesión, lleva al login. Si la convocatoria admite varias modalidades, el
+ * estudiante elige una. Si ya tiene una solicitud en esta convocatoria, el
+ * backend responde 409 con su número y se le lleva a esa en vez de mostrarle
+ * un error: lo que quería era seguir con su solicitud.
+ */
+const IniciarSolicitud = ({ convocatoria }) => {
+  const navigate = useNavigate();
+  const modalidades = convocatoria.modalidades ?? [];
+  const [tipo, setTipo] = useState(modalidades[0] ?? '');
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState('');
+
+  const iniciar = async () => {
+    if (!haySesion()) {
+      navigate('/login');
+      return;
+    }
+
+    setError('');
+    setEnviando(true);
+    try {
+      const solicitud = await crearSolicitud({ tipo, convocatoriaId: convocatoria.id });
+      navigate(`/solicitudes/${solicitud.id}`);
+    } catch (e) {
+      if (e.solicitudExistente) {
+        navigate(`/solicitudes/${e.solicitudExistente}`);
+        return;
+      }
+      setError(e.message);
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <div style={styles.iniciar}>
+      {modalidades.length > 1 && (
+        <label style={styles.etiquetaSelector}>
+          Modalidad
+          <select value={tipo} onChange={(e) => setTipo(e.target.value)} style={styles.selector}>
+            {modalidades.map((m) => (
+              <option key={m} value={m}>{nombreModalidad(m)}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      <button type="button" style={styles.botonAplicar} onClick={iniciar} disabled={enviando}>
+        {enviando ? 'Creando…' : 'Iniciar solicitud'}
+      </button>
+      {error && <p style={styles.errorEnLinea} role="alert">{error}</p>}
+    </div>
   );
 };
 
@@ -205,7 +257,6 @@ const styles = {
   datoValor: { margin: '0.15rem 0 0', fontSize: '0.88rem', color: theme.colors.textPrimary, fontWeight: 500 },
 
   botonAplicar: {
-    marginTop: '1rem',
     backgroundColor: theme.colors.primary,
     color: '#ffffff',
     border: 'none',
@@ -216,5 +267,9 @@ const styles = {
     cursor: 'pointer',
     fontFamily: theme.fonts.main,
   },
+  iniciar: { marginTop: '1rem', display: 'flex', alignItems: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' },
+  etiquetaSelector: { display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: theme.colors.textSecondary },
+  selector: { padding: '0.45rem 0.6rem', borderRadius: theme.borderRadius.md, border: `1px solid ${theme.colors.border}`, fontSize: '0.88rem' },
+  errorEnLinea: { margin: 0, width: '100%', fontSize: '0.84rem', color: theme.colors.error },
   noDisponible: { margin: '1rem 0 0', fontSize: '0.84rem', color: theme.colors.textSecondary, fontStyle: 'italic' },
 };

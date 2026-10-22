@@ -19,13 +19,16 @@ const API = axios.create({
  * @param {object} config Configuracion de la peticion de axios.
  * @returns {object} La misma configuracion, con la cabecera si corresponde.
  */
-export function agregarTokenDeSesion(config) {
-  let token = null;
+function leerToken() {
   try {
-    token = localStorage.getItem('token');
+    return localStorage.getItem('token');
   } catch {
-    token = null;
+    return null;
   }
+}
+
+export function agregarTokenDeSesion(config) {
+  const token = leerToken();
 
   if (token) {
     config.headers = config.headers || {};
