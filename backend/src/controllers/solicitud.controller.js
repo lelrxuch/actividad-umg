@@ -56,13 +56,15 @@ export function listarDocumentos(req, res) {
 export async function crear(req, res) {
   try {
     const estudianteId = solicitante(req).id;
-    const { tipo } = req.body;
+    const { tipo, convocatoriaId } = req.body || {};
 
     if (!tipo) {
       return res.status(400).json({ error: 'El tipo de beca es obligatorio.' });
     }
 
-    const nuevaSolicitud = await solicitudService.crearSolicitud(estudianteId, tipo);
+    const nuevaSolicitud = await solicitudService.crearSolicitud(estudianteId, tipo, {
+      convocatoriaId: convocatoriaId === undefined ? null : Number(convocatoriaId),
+    });
     res.status(201).json(nuevaSolicitud);
   } catch (error) {
     responderError(res, error);
