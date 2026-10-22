@@ -68,8 +68,9 @@ Se declara explícitamente, para que no se asuma cobertura que no existe:
 - **Pruebas de carga y estrés.** El sistema no se ha probado con usuarios
   concurrentes. El curso no lo pide y el equipo no tiene entorno para medirlo.
 - **Pruebas de extremo a extremo sobre el navegador.** No hay Cypress ni
-  Playwright. El frontend se prueba a nivel de sus servicios (19 pruebas) y de
-  forma manual exploratoria.
+  Playwright. **El frontend no tiene ninguna prueba real**: los 2 archivos de
+  prueba que existen no importan código de producción (ver 6.2). Hoy solo se
+  verifica de forma manual exploratoria.
 - **Compatibilidad con navegadores obsoletos.** El frontend usa React 19 y Vite;
   no se prueba en Internet Explorer.
 - **Infraestructura y red.** No se prueba el servidor ni la configuración de red
@@ -150,11 +151,12 @@ integración, pocas de sistema. El estado actual respeta esa forma.
                  │  Nivel 2             │  188 pruebas
                  │  Integración         │  158 entre capas + 30 de controller
              ┌───┴──────────────────────┴───┐
-             │  Nivel 1                     │  145 pruebas unitarias
-             │  Unitarias                   │  backend 126 + frontend 19
+             │  Nivel 1                     │  126 pruebas unitarias
+             │  Unitarias                   │  todas del backend
              └──────────────────────────────┘
 
-      Backend: 126 + 165 + 23 = 314.  Frontend: 19.
+      Backend: 126 + 158 + 30 = 314.
+      Frontend: 19 archivos de prueba que no verifican nada (ver 6.2).
 ```
 
 La clasificación no es declarativa: sale de qué mockea cada archivo. Una prueba
@@ -262,8 +264,39 @@ error en el futuro.
 | `solicitud.modalidades.http.test.js` | 7 | Modalidades por HTTP |
 | `password.service.test.js` | 5 | Cambio de contraseña |
 
-**Frontend — 19 pruebas en 2 archivos:** `usuarioService.test.js` (11) y
-`passwordService.test.js` (8).
+**Frontend — 19 pruebas en 2 archivos, que NO cuentan como cobertura:**
+
+| Archivo | Pruebas | Qué cubre |
+|---|---:|---|
+| `usuarioService.test.js` | 11 | **Nada del código de producción** |
+| `passwordService.test.js` | 8 | **Nada del código de producción** |
+
+Estas 19 pruebas **no importan un solo módulo del frontend**. Su único `import`
+es de `vitest`, y cada aserción compara literales escritos dentro de la propia
+prueba:
+
+```js
+it('debe detectar que las contraseñas coinciden', () => {
+  const password = 'Contraseña123';
+  const confirmPassword = 'Contraseña123';
+  expect(password === confirmPassword).toBe(true);
+});
+```
+
+Eso afirma que `'Contraseña123' === 'Contraseña123'`, que es cierto
+independientemente de lo que haga la aplicación. **No pueden fallar nunca**, ni
+siquiera si se borra el frontend completo. Por el criterio de la sección 6.3, una
+prueba que no puede fallar no es una prueba.
+
+**La cobertura real del frontend es cero.** Se cuentan aquí porque existen y
+porque `npm test` las reporta, pero no se acreditan como verificación de nada, y
+el total honesto del proyecto es **314 pruebas, no 333**.
+
+Esto se descubrió al revisar los archivos para redactar este plan, y es la razón
+por la que la sección 6.3 insiste en que el conteo de pruebas no significa nada
+por sí solo. La primera tarea de calidad del frontend es escribir pruebas que
+importen `services/authService.js` y las pantallas, y demostrar con un mutante
+que fallan.
 
 ### 6.3 Verificación por mutación
 
@@ -354,7 +387,7 @@ Las pruebas no producen un documento final único, sino artefactos continuos:
 
 | Artefacto | Dónde vive | Estado |
 |---|---|---|
-| Suite de pruebas automatizadas | `backend/src/__tests__/` y `frontend/src/__tests__/` | 314 + 19 pruebas |
+| Suite de pruebas automatizadas | `backend/src/__tests__/` | **314 pruebas.** Las 19 del frontend no se acreditan: ver 6.2 |
 | Colección de Postman | `backend/tests/postman/` | Existe |
 | Script de recorrido end-to-end | `scripts/demo-api.sh` | 15 pasos, idempotente, con código de salida |
 | Registro de defectos | Tablero de Jira, proyecto SCRUM, etiqueta Bug | En uso |
@@ -389,7 +422,7 @@ Declarados para que el Product Owner los conozca y pueda priorizarlos:
 | No hay Staging: las condiciones de producción no se prueban | Medio | Variables documentadas en el Manual Técnico |
 | **Ninguna prueba automatizada ejecuta SQL.** Un error de consulta, de nombre de columna o de restricción solo lo atrapa el recorrido manual | Alto | `demo-api.sh` contra PostgreSQL real antes de cada Sprint Review |
 | No se mide cobertura de código | Medio | La verificación por mutación cubre el caso crítico, pero no dice qué quedó sin probar |
-| El frontend no tiene pruebas de extremo a extremo | Medio | Pruebas manuales exploratorias |
+| **El frontend no tiene NINGUNA prueba real.** Las 19 existentes no importan código de producción y no pueden fallar | Alto | Solo pruebas manuales exploratorias. Es la primera tarea de calidad del frontend |
 | `npm audit` reporta 4 vulnerabilidades en el backend: 1 crítica y 3 moderadas | Alto | **Pendiente de atender** |
 
 ---
