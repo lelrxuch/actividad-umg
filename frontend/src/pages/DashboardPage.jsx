@@ -1,6 +1,6 @@
 // src/pages/DashboardPage.jsx
 // Página mínima a la que llega el usuario después de iniciar sesión.
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { theme } from '../styles/theme';
 
 function leerUsuario() {
@@ -32,6 +32,11 @@ export const DashboardPage = () => {
       {usuario?.email && <p style={styles.text}>{usuario.email}</p>}
       {usuario?.rol && <p style={styles.text}>Rol: {usuario.rol}</p>}
 
+      <div style={styles.links}>
+        <Link to="/convocatorias" style={styles.link}>Convocatorias abiertas</Link>
+        <Link to="/solicitudes" style={styles.link}>Mis solicitudes</Link>
+      </div>
+
       <button type="button" onClick={handleLogout} style={styles.button}>
         Cerrar sesión
       </button>
@@ -42,6 +47,8 @@ export const DashboardPage = () => {
 const styles = {
   card: { backgroundColor: theme.colors.cardBg, padding: '2.5rem', borderRadius: theme.borderRadius.lg, boxShadow: theme.shadows.card, width: '100%', maxWidth: '420px', borderTop: `6px solid ${theme.colors.primary}`, textAlign: 'center' },
   title: { fontSize: '1.4rem', color: theme.colors.secondary, fontWeight: 'bold', margin: '0 0 0.5rem 0' },
+  links: { display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.25rem' },
+  link: { color: theme.colors.accent, fontWeight: 600, fontSize: '0.92rem' },
   text: { fontSize: '0.9rem', color: theme.colors.textSecondary, margin: '0.25rem 0' },
   button: { width: '100%', padding: '0.85rem', backgroundColor: theme.colors.primary, color: '#ffffff', border: 'none', borderRadius: theme.borderRadius.md, fontSize: '0.95rem', fontWeight: '600', cursor: 'pointer', marginTop: '1.5rem' }
 };

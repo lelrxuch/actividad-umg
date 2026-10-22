@@ -5,13 +5,39 @@
 // SCRUM-35, no detalles de implementacion: nada de buscar nombres de clases ni
 // de inspeccionar el estado interno.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render as renderBase, screen, waitFor, fireEvent } from '@testing-library/react';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { ConvocatoriasPage } from '../pages/ConvocatoriasPage';
 import { listarConvocatorias } from '../services/convocatoriaService';
+import { crearSolicitud } from '../services/solicitudService';
 
 vi.mock('../services/convocatoriaService', () => ({
   listarConvocatorias: vi.fn(),
 }));
+
+vi.mock('../services/solicitudService', () => ({
+  crearSolicitud: vi.fn(),
+}));
+
+/**
+ * Renderiza dentro de un router con destinos de prueba, para poder afirmar a
+ * dónde navega la pantalla sin depender del resto de la aplicación.
+ */
+function render(elemento) {
+  return renderBase(
+    <MemoryRouter initialEntries={['/convocatorias']}>
+      <Routes>
+        <Route path="/convocatorias" element={elemento} />
+        <Route path="/login" element={<p>PANTALLA LOGIN</p>} />
+        <Route path="/solicitudes/:id" element={<DestinoSolicitud />} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
+function DestinoSolicitud() {
+  return <p>PANTALLA SOLICITUD</p>;
+}
 
 /**
  * Una convocatoria con la forma exacta que devuelve el backend.
@@ -205,5 +231,82 @@ describe('ConvocatoriasPage', () => {
         expect(screen.queryByText(/cargando convocatorias/i)).not.toBeInTheDocument();
       });
     });
+  });
+});
+
+describe('iniciar una solicitud', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it('sin sesión, lleva al login y no crea nada', async () => {
+    listarConvocatorias.mockResolvedValue([convocatoria()]);
+
+    render(<ConvocatoriasPage />);
+    fireEvent.click(await screen.findByRole('button', { name: /iniciar solicitud/i }));
+
+    expect(await screen.findByText('PANTALLA LOGIN')).toBeInTheDocument();
+    expect(crearSolicitud).not.toHaveBeenCalled();
+  });
+
+  it('con sesión, crea la solicitud para esta convocatoria y abre su detalle', async () => {
+    localStorage.setItem('token', 't');
+    listarConvocatorias.mockResolvedValue([convocatoria({ id: 7, modalidades: ['universitaria'] })]);
+    crearSolicitud.mockResolvedValue({ id: 50 });
+
+    render(<ConvocatoriasPage />);
+    fireEvent.click(await screen.findByRole('button', { name: /iniciar solicitud/i }));
+
+    expect(await screen.findByText('PANTALLA SOLICITUD')).toBeInTheDocument();
+    expect(crearSolicitud).toHaveBeenCalledWith({ tipo: 'universitaria', convocatoriaId: 7 });
+  });
+
+  it('si la convocatoria admite varias modalidades, crea con la que se eligió', async () => {
+    localStorage.setItem('token', 't');
+    listarConvocatorias.mockResolvedValue([
+      convocatoria({ id: 3, modalidades: ['universitaria', 'posgrado'] }),
+    ]);
+    crearSolicitud.mockResolvedValue({ id: 51 });
+
+    render(<ConvocatoriasPage />);
+    fireEvent.change(await screen.findByLabelText(/modalidad/i), { target: { value: 'posgrado' } });
+    fireEvent.click(screen.getByRole('button', { name: /iniciar solicitud/i }));
+
+    await screen.findByText('PANTALLA SOLICITUD');
+    expect(crearSolicitud).toHaveBeenCalledWith({ tipo: 'posgrado', convocatoriaId: 3 });
+  });
+
+  it('con una sola modalidad no pregunta nada', async () => {
+    listarConvocatorias.mockResolvedValue([convocatoria({ modalidades: ['universitaria'] })]);
+
+    render(<ConvocatoriasPage />);
+    await screen.findByRole('button', { name: /iniciar solicitud/i });
+
+    expect(screen.queryByLabelText(/modalidad/i)).not.toBeInTheDocument();
+  });
+
+  it('si ya tiene una solicitud en la convocatoria, lo lleva a esa en vez de mostrar error', async () => {
+    localStorage.setItem('token', 't');
+    listarConvocatorias.mockResolvedValue([convocatoria()]);
+    const duplicada = new Error('Ya tiene la solicitud 4 en esta convocatoria.');
+    duplicada.solicitudExistente = 4;
+    crearSolicitud.mockRejectedValue(duplicada);
+
+    render(<ConvocatoriasPage />);
+    fireEvent.click(await screen.findByRole('button', { name: /iniciar solicitud/i }));
+
+    expect(await screen.findByText('PANTALLA SOLICITUD')).toBeInTheDocument();
+  });
+
+  it('cualquier otro error se muestra junto al botón', async () => {
+    localStorage.setItem('token', 't');
+    listarConvocatorias.mockResolvedValue([convocatoria()]);
+    crearSolicitud.mockRejectedValue(new Error('La convocatoria 1 está fuera de su periodo de recepción.'));
+
+    render(<ConvocatoriasPage />);
+    fireEvent.click(await screen.findByRole('button', { name: /iniciar solicitud/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/fuera de su periodo/i);
   });
 });
