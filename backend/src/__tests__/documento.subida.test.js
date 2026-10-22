@@ -405,10 +405,15 @@ describe('contrato con el repositorio', () => {
       new URL('../repositories/solicitud.repository.js', import.meta.url)
     );
     const fuente = await fs.readFile(ruta, 'utf8');
-    const select = fuente.slice(fuente.indexOf('SELECT'), fuente.indexOf('WHERE id = $1'));
+    // Las lecturas comparten la constante COLUMNAS; findById tiene que usarla
+    // y la constante tiene que traer tipo.
+    const columnas = /const COLUMNAS = '([^']*)'/.exec(fuente)?.[1] ?? '';
+    const select = fuente.slice(fuente.indexOf('SELECT ${COLUMNAS} FROM solicitudes WHERE id = $1'));
+    expect(select.length).toBeGreaterThan(0);
 
-    expect(select).toMatch(/\btipo\b/);
-    expect(select).toMatch(/\bestado\b/);
-    expect(select).toMatch(/\bestudiante_id\b/);
+    expect(columnas).toMatch(/\btipo\b/);
+    expect(columnas).toMatch(/\bconvocatoria_id\b/);
+    expect(columnas).toMatch(/\bestado\b/);
+    expect(columnas).toMatch(/\bestudiante_id\b/);
   });
 });

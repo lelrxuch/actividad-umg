@@ -16,6 +16,9 @@ vi.mock('../repositories/solicitud.repository.js', () => ({
 // así que las pruebas pasan uno explícito.
 vi.mock('../repositories/documento.repository.js', () => ({
   evaluadoresDeSolicitud: vi.fn(),
+  // Desde SCRUM-39 enviar exige el expediente completo: se consulta qué
+  // documentos tiene la solicitud.
+  listarDeSolicitud: vi.fn(),
 }));
 
 /** El estudiante dueño de las filas de prueba. */
@@ -25,7 +28,7 @@ const EVALUADOR = { id: 77, rol: 'evaluador' };
 
 /** Fila tal como la devolvería la tabla `solicitudes`. */
 function filaEnEstado(estado, id = 42) {
-  return { id, estudiante_id: 3, estado, creado_en: new Date(), actualizado_en: new Date() };
+  return { id, estudiante_id: 3, estado, tipo: 'universitaria', creado_en: new Date(), actualizado_en: new Date() };
 }
 
 describe('solicitud.service — integración de los patrones State y Observer', () => {
@@ -36,6 +39,7 @@ describe('solicitud.service — integración de los patrones State y Observer', 
     transporteCorreo = vi.fn();
     solicitudRepository.actualizarEstado.mockResolvedValue({});
     documentoRepository.evaluadoresDeSolicitud.mockResolvedValue([EVALUADOR.id]);
+    documentoRepository.listarDeSolicitud.mockResolvedValue([{ tipo: 'dni' }, { tipo: 'titulo' }, { tipo: 'carta' }]);
   });
 
   describe('crearSolicitud', () => {

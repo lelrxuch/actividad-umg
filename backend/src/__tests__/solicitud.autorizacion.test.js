@@ -17,6 +17,9 @@ vi.mock('../repositories/solicitud.repository.js', () => ({
 
 vi.mock('../repositories/documento.repository.js', () => ({
   evaluadoresDeSolicitud: vi.fn(),
+  // Desde SCRUM-39 enviar exige el expediente completo: se consulta qué
+  // documentos tiene la solicitud.
+  listarDeSolicitud: vi.fn(),
 }));
 
 const DUENO = { id: 3, rol: 'estudiante' };
@@ -35,6 +38,7 @@ describe('autorización de solicitudes — enviar', () => {
     vi.clearAllMocks();
     solicitudRepository.actualizarEstado.mockResolvedValue({});
     documentoRepository.evaluadoresDeSolicitud.mockResolvedValue([EVALUADOR_ASIGNADO.id]);
+    documentoRepository.listarDeSolicitud.mockResolvedValue([{ tipo: 'dni' }, { tipo: 'titulo' }, { tipo: 'carta' }]);
     solicitudRepository.findById.mockResolvedValue(fila('Borrador'));
   });
 
@@ -72,6 +76,7 @@ describe('autorización de solicitudes — evaluar y dictaminar', () => {
     vi.clearAllMocks();
     solicitudRepository.actualizarEstado.mockResolvedValue({});
     documentoRepository.evaluadoresDeSolicitud.mockResolvedValue([EVALUADOR_ASIGNADO.id]);
+    documentoRepository.listarDeSolicitud.mockResolvedValue([{ tipo: 'dni' }, { tipo: 'titulo' }, { tipo: 'carta' }]);
   });
 
   it('el evaluador asignado evalúa', async () => {
@@ -144,6 +149,7 @@ describe('autorización de solicitudes — lectura', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     documentoRepository.evaluadoresDeSolicitud.mockResolvedValue([EVALUADOR_ASIGNADO.id]);
+    documentoRepository.listarDeSolicitud.mockResolvedValue([{ tipo: 'dni' }, { tipo: 'titulo' }, { tipo: 'carta' }]);
     solicitudRepository.findById.mockResolvedValue(fila('Enviada'));
   });
 

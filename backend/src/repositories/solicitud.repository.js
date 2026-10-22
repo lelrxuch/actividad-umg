@@ -1,11 +1,12 @@
 // Acceso a datos de Solicitud.
 //
-// PENDIENTE DE INFRAESTRUCTURA: la tabla `solicitudes` todavía no existe en el
-// schema del proyecto (ver SCRUM-24, que está definiendo dónde vive el DDL).
-// Las consultas de abajo son las definitivas; quedan operativas en cuanto se
-// cree la tabla con las columnas: id, estudiante_id, estado, creado_en,
-// actualizado_en.
+//
+// Todas las lecturas devuelven las mismas columnas (COLUMNAS). Antes cada
+// consulta elegía las suyas, y el listado no traía `tipo` ni
+// `convocatoria_id`: la pantalla no podía saber qué documentos pedir.
 import { pool } from '../config/db.js';
+
+const COLUMNAS = 'id, estudiante_id, estado, tipo, convocatoria_id, creado_en, actualizado_en';
 
 /**
  * Busca una solicitud por su identificador.
@@ -21,9 +22,7 @@ import { pool } from '../config/db.js';
  */
 export async function findById(id) {
   const resultado = await pool.query(
-    `SELECT id, estudiante_id, estado, tipo, creado_en, actualizado_en
-       FROM solicitudes
-      WHERE id = $1`,
+    `SELECT ${COLUMNAS} FROM solicitudes WHERE id = $1`,
     [id]
   );
 
@@ -67,13 +66,34 @@ export async function actualizarEstado(id, estado) {
 /**
  * Lista las solicitudes pertenecientes a un estudiante.
  * @param {number} estudianteId
- * @returns {Promise<Array<{id: number, estudiante_id: number, estado: string, creado_en: Date, actualizado_en: Date}>>}
+ * @returns {Promise<Array<object>>} Filas con las columnas de COLUMNAS.
  */
 export async function listarPorEstudiante(estudianteId) {
   const resultado = await pool.query(
-    'SELECT id, estudiante_id, estado, creado_en, actualizado_en FROM solicitudes WHERE estudiante_id = $1 ORDER BY creado_en DESC',
+    `SELECT ${COLUMNAS} FROM solicitudes WHERE estudiante_id = $1 ORDER BY creado_en DESC`,
     [estudianteId]
   );
 
   return resultado.rows;
+}
+/**
+ * ¿Tiene ya el estudiante una solicitud vigente en esta convocatoria?
+ *
+ * "Vigente" es cualquier estado salvo Rechazada: una solicitud en curso o ya
+ * aprobada impide abrir otra, una rechazada no.
+ *
+ * @param {number} estudianteId
+ * @param {number} convocatoriaId
+ * @returns {Promise<number|null>} El id de la que ya existe, o null.
+ */
+export async function vigenteEnConvocatoria(estudianteId, convocatoriaId) {
+  const resultado = await pool.query(
+    `SELECT id FROM solicitudes
+      WHERE estudiante_id = $1 AND convocatoria_id = $2 AND estado <> 'Rechazada'
+      ORDER BY creado_en DESC
+      LIMIT 1`,
+    [estudianteId, convocatoriaId]
+  );
+
+  return resultado.rows[0]?.id ?? null;
 }

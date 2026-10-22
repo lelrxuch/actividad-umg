@@ -1,6 +1,5 @@
 // Controller del módulo Solicitudes (SCRUM-41 y SCRUM-35).
 import * as solicitudService from '../services/solicitud.service.js';
-import * as solicitudRepository from '../repositories/solicitud.repository.js';
 
 /**
  * Convierte un error de negocio en respuesta HTTP.
@@ -10,9 +9,16 @@ import * as solicitudRepository from '../repositories/solicitud.repository.js';
  * negocio, que llevan status a propósito, hablan con el usuario.
  */
 function responderError(res, error) {
-  return res
-    .status(error.status || 500)
-    .json({ error: error.status ? error.message : 'Error interno del servidor.' });
+  if (!error.status) {
+    return res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+
+  // `faltantes` y `solicitudExistente` son parte del contrato de error: le
+  // dicen al cliente qué documento falta o a qué solicitud ir.
+  const cuerpo = { error: error.message };
+  if (error.faltantes) cuerpo.faltantes = error.faltantes;
+  if (error.solicitudExistente) cuerpo.solicitudExistente = error.solicitudExistente;
+  return res.status(error.status).json(cuerpo);
 }
 
 /**
@@ -77,9 +83,7 @@ export async function crear(req, res) {
  */
 export async function listarMisSolicitudes(req, res) {
   try {
-    const estudianteId = solicitante(req).id;
-    const solicitudes = await solicitudRepository.listarPorEstudiante(estudianteId);
-    res.json(solicitudes);
+    res.json(await solicitudService.listarMisSolicitudes(solicitante(req)));
   } catch (error) {
     responderError(res, error);
   }
