@@ -167,3 +167,63 @@ describe('Convocatoria — el mapa de estados', () => {
     expect(() => completa().cambiarEstado({ nombre: 'Publicada' })).toThrow(TypeError);
   });
 });
+
+describe('toJSON — lo que el cliente necesita para no replicar reglas', () => {
+  /** Una convocatoria publicada con la ventana de fechas que se indique. */
+  function publicada({ apertura, cierre }) {
+    const c = new Convocatoria({
+      id: 1,
+      titulo: 'Beca de prueba',
+      fechaApertura: apertura,
+      fechaCierre: cierre,
+      modalidades: ['universitaria'],
+    });
+    c.publicar();
+    return c;
+  }
+
+  it('recibeSolicitudes es true cuando el estado Y las fechas lo permiten', () => {
+    const json = publicada({ apertura: '2026-01-01', cierre: '2099-12-31' }).toJSON();
+
+    expect(json.admiteSolicitudes).toBe(true);
+    expect(json.recibeSolicitudes).toBe(true);
+  });
+
+  it('recibeSolicitudes es false si la convocatoria todavía no abre', () => {
+    // Este es el caso que importa: el ESTADO permite recibir, las FECHAS no.
+    // Sin este campo el cliente ofreceria aplicar y recibiria 409.
+    const json = publicada({ apertura: '2099-01-01', cierre: '2099-12-31' }).toJSON();
+
+    expect(json.admiteSolicitudes).toBe(true);
+    expect(json.recibeSolicitudes).toBe(false);
+  });
+
+  it('recibeSolicitudes es false si la convocatoria ya vencio', () => {
+    const json = publicada({ apertura: '2020-01-01', cierre: '2020-12-31' }).toJSON();
+
+    expect(json.admiteSolicitudes).toBe(true);
+    expect(json.recibeSolicitudes).toBe(false);
+  });
+
+  it('en Borrador no recibe solicitudes aunque las fechas esten vigentes', () => {
+    const c = new Convocatoria({
+      id: 2,
+      titulo: 'Sin publicar',
+      fechaApertura: '2026-01-01',
+      fechaCierre: '2099-12-31',
+      modalidades: ['universitaria'],
+    });
+
+    const json = c.toJSON();
+
+    expect(json.admiteSolicitudes).toBe(false);
+    expect(json.recibeSolicitudes).toBe(false);
+  });
+
+  it('en Cerrada tampoco', () => {
+    const c = publicada({ apertura: '2026-01-01', cierre: '2099-12-31' });
+    c.cerrar();
+
+    expect(c.toJSON().recibeSolicitudes).toBe(false);
+  });
+});

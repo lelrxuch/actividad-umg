@@ -156,6 +156,14 @@ export class Convocatoria {
       estado: this.nombreEstado,
       accionesPermitidas: this.accionesPermitidas,
       admiteSolicitudes: this.admiteSolicitudes,
+      // POR QUE VIAJA `recibeSolicitudes` Y NO SOLO `admiteSolicitudes`:
+      // `admiteSolicitudes` dice si el ESTADO lo permite; `estaEnVentana()` dice
+      // si las FECHAS lo permiten. Hacen falta las dos, y el service las exige
+      // por separado. Sin este campo, el cliente tendria que recalcular la
+      // ventana de fechas por su cuenta: replicaria una regla de negocio y
+      // ofreceria aplicar a una convocatoria publicada que todavia no abre,
+      // para recibir un 409.
+      recibeSolicitudes: this.admiteSolicitudes && this.estaEnVentana(),
     };
   }
 }

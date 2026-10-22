@@ -18,7 +18,7 @@ export const PublicLayout = () => {
           
           <nav style={styles.navLinks}>
             <Link to="/" style={styles.navItem}>Inicio</Link>
-            <Link to="/noticias" style={styles.navItem}>Noticias</Link>
+            <Link to="/convocatorias" style={styles.navItem}>Convocatorias</Link>
             <Link to="/contacto" style={styles.navItem}>Contacto</Link>
             <Link to="/login" style={styles.loginBtn}>Iniciar Sesión</Link>
           </nav>
