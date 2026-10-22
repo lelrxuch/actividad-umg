@@ -48,3 +48,58 @@ export async function evaluadoresDeSolicitud(solicitudId) {
 
   return resultado.rows.map((fila) => fila.evaluador_id);
 }
+
+/**
+ * Inserta un documento del expediente.
+ *
+ * `estudiante_id` es NOT NULL y se guarda aunque sea derivable de la solicitud:
+ * es la columna que lee el Proxy para reconocer al dueño, y una consulta menos
+ * en cada descarga.
+ *
+ * @param {object} datos
+ * @param {number} datos.solicitudId
+ * @param {number} datos.estudianteId
+ * @param {string} datos.tipo
+ * @param {string} datos.nombreArchivo Nombre que el usuario verá.
+ * @param {string} datos.rutaArchivo Ruta relativa dentro del directorio de subidas.
+ * @returns {Promise<object>} La fila creada, en camelCase.
+ */
+export async function crear({ solicitudId, estudianteId, tipo, nombreArchivo, rutaArchivo }) {
+  const resultado = await pool.query(
+    `INSERT INTO documentos (solicitud_id, estudiante_id, tipo, nombre_archivo, ruta_archivo)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id,
+               solicitud_id   AS "solicitudId",
+               estudiante_id  AS "estudianteId",
+               tipo,
+               nombre_archivo AS "nombreArchivo",
+               ruta_archivo   AS "rutaArchivo",
+               creado_en      AS "creadoEn"`,
+    [solicitudId, estudianteId, tipo, nombreArchivo, rutaArchivo]
+  );
+
+  return resultado.rows[0];
+}
+
+/**
+ * Documentos ya cargados en una solicitud.
+ *
+ * Sirve para dos cosas: decirle al estudiante qué lleva subido, y detectar un
+ * tipo repetido antes de escribir el archivo en disco. El índice único
+ * (solicitud_id, tipo) es la garantía real contra el duplicado; esto evita
+ * dejar un archivo huérfano cuando el conflicto es previsible.
+ *
+ * @param {number} solicitudId
+ * @returns {Promise<Array<{id: number, tipo: string, nombreArchivo: string}>>}
+ */
+export async function listarDeSolicitud(solicitudId) {
+  const resultado = await pool.query(
+    `SELECT id, tipo, nombre_archivo AS "nombreArchivo", creado_en AS "creadoEn"
+       FROM documentos
+      WHERE solicitud_id = $1
+      ORDER BY tipo`,
+    [solicitudId]
+  );
+
+  return resultado.rows;
+}
