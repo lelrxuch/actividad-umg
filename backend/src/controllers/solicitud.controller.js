@@ -1,29 +1,17 @@
-// Controller del módulo Solicitudes — catálogo de modalidades (SCRUM-41).
-//
-// Expone lo que el Factory Method ya sabe: qué modalidades de beca existen y
-// qué documentación exige cada una. No hay un `switch` sobre el tipo aquí ni en
-// el service: la lista sale de SolicitudFactory y los documentos del propio
-// producto concreto, así que agregar una beca nueva no toca este archivo.
-//
-// POR QUÉ ES PÚBLICO (sin `autenticado`):
-// El estudiante necesita ver qué papeles le van a pedir ANTES de registrarse.
-// Si estos endpoints exigieran sesión, la pantalla de requisitos solo existiría
-// para quien ya tiene cuenta, que es justo al revés de lo que pide la historia.
-// No devuelven ningún dato de ninguna persona: es catálogo estático.
+// Controller del módulo Solicitudes (SCRUM-41 y SCRUM-35).
 import * as solicitudService from '../services/solicitud.service.js';
+import * as solicitudRepository from '../repositories/solicitud.repository.js';
 
 /** Convierte un error de negocio en respuesta HTTP. */
 function responderError(res, error) {
+  const status = error.status || 500;
   return res
-    .status(error.status || 500)
-    .json({ error: error.status ? error.message : 'Error interno del servidor.' });
+    .status(status)
+    .json({ error: error.message || 'Error interno del servidor.' });
 }
 
 /**
  * GET /api/solicitudes/tipos
- *
- * Modalidades disponibles. El frontend arma el selector con esto en vez de
- * tener la lista duplicada en JavaScript.
  */
 export function listarTipos(req, res) {
   try {
@@ -35,14 +23,107 @@ export function listarTipos(req, res) {
 
 /**
  * GET /api/solicitudes/tipos/:tipo/documentos
- *
- * Documentación exigida por una modalidad, sin iniciar ninguna solicitud.
- * 400 con la lista de tipos válidos si la modalidad no existe.
  */
 export function listarDocumentos(req, res) {
   try {
     const { tipo } = req.params;
     res.json({ tipo, documentos: solicitudService.documentosRequeridos(tipo) });
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
+/**
+ * POST /api/solicitudes
+ * Estudiante crea solicitud en estado Borrador.
+ */
+export async function crear(req, res) {
+  try {
+    const estudianteId = req.usuario.sub; // sub del token JWT
+    const { tipo } = req.body;
+
+    if (!tipo) {
+      return res.status(400).json({ error: 'El tipo de beca es obligatorio.' });
+    }
+
+    const nuevaSolicitud = await solicitudService.crearSolicitud(estudianteId, tipo);
+    res.status(201).json(nuevaSolicitud);
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
+/**
+ * GET /api/solicitudes
+ * Estudiante lista sus propias solicitudes.
+ */
+export async function listarMisSolicitudes(req, res) {
+  try {
+    const estudianteId = req.usuario.sub;
+    const solicitudes = await solicitudRepository.listarPorEstudiante(estudianteId);
+    res.json(solicitudes);
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
+/**
+ * GET /api/solicitudes/:id
+ * Consulta el estado y acciones válidas de una solicitud.
+ */
+export async function obtenerPorId(req, res) {
+  try {
+    const { id } = req.params;
+    const solicitud = await solicitudService.obtenerSolicitud(Number(id));
+    res.json(solicitud);
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
+/**
+ * POST /api/solicitudes/:id/enviar
+ * Transición: Borrador -> Enviada
+ */
+export async function enviar(req, res) {
+  try {
+    const { id } = req.params;
+    const resultado = await solicitudService.enviarSolicitud(Number(id));
+    res.json(resultado);
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
+/**
+ * POST /api/solicitudes/:id/evaluar
+ * Transición: Enviada -> En Evaluación
+ */
+export async function evaluar(req, res) {
+  try {
+    const { id } = req.params;
+    const resultado = await solicitudService.evaluarSolicitud(Number(id));
+    res.json(resultado);
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
+/**
+ * POST /api/solicitudes/:id/dictamen
+ * Transición: En Evaluación -> Aprobada o Rechazada
+ */
+export async function dictaminar(req, res) {
+  try {
+    const { id } = req.params;
+    const { aprobado } = req.body;
+
+    if (typeof aprobado !== 'boolean') {
+      return res.status(400).json({ error: 'El campo "aprobado" es requerido y debe ser booleano.' });
+    }
+
+    const resultado = await solicitudService.dictaminarSolicitud(Number(id), aprobado);
+    res.json(resultado);
   } catch (error) {
     responderError(res, error);
   }
