@@ -29,7 +29,10 @@ describe('solicitud.service — integración del Factory Method (SCRUM-30)', () 
       documentosRequeridos: ['dni', 'titulo', 'carta'],
       nivelTituloRequerido: 'diversificado',
     });
-    expect(solicitudRepository.crear).toHaveBeenCalledWith(42, 'Borrador');
+    expect(solicitudRepository.crear).toHaveBeenCalledWith(42, 'Borrador', {
+      tipo: expect.any(String),
+      convocatoriaId: null,
+    });
   });
 
   it('devuelve requisitos distintos según la modalidad', async () => {
