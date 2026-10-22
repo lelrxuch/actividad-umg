@@ -15,6 +15,58 @@ import { EmailNotificationListener } from '../patterns/observer/EmailNotificatio
 import { SolicitudFactory } from '../patterns/creational/SolicitudFactory.js';
 import { autorizar, ACCIONES } from './solicitud.autorizacion.js';
 import { exigirConvocatoriaAbierta } from './convocatoria.service.js';
+import { listarDeSolicitud } from '../repositories/documento.repository.js';
+
+function errorDeNegocio(mensaje, status, extra = {}) {
+  const error = new Error(mensaje);
+  error.status = status;
+  Object.assign(error, extra);
+  return error;
+}
+
+/**
+ * La forma en que una solicitud sale del service, siempre la misma.
+ *
+ * Antes crear devolvía la modalidad y los documentos requeridos, pero consultar
+ * y transicionar no: el cliente recibía formas distintas de la misma entidad y
+ * desde el detalle no podía saber qué documentos pedir.
+ */
+function formatoPublico(fila, solicitud = hidratar(fila)) {
+  const modalidad = fila.tipo ? SolicitudFactory.crearSolicitud(fila.tipo).toJSON() : {};
+  return {
+    ...solicitud.toJSON(),
+    ...modalidad,
+    convocatoriaId: fila.convocatoria_id ?? null,
+  };
+}
+
+/**
+ * SCRUM-39: no se envía un expediente incompleto.
+ *
+ * Compara los documentos subidos contra los que exige la modalidad (Factory
+ * Method). Responde 400 con `faltantes`, el mismo contrato que la revisión de
+ * expediente, para que el cliente muestre exactamente qué falta.
+ */
+async function exigirExpedienteCompleto(fila) {
+  if (!fila.tipo) {
+    throw errorDeNegocio(
+      `La solicitud ${fila.id} no tiene modalidad de beca, así que su expediente no se puede validar.`,
+      400
+    );
+  }
+
+  const requeridos = SolicitudFactory.crearSolicitud(fila.tipo).documentosRequeridos;
+  const presentes = new Set((await listarDeSolicitud(fila.id)).map((d) => d.tipo));
+  const faltantes = requeridos.filter((tipo) => !presentes.has(tipo));
+
+  if (faltantes.length > 0) {
+    throw errorDeNegocio(
+      `El expediente está incompleto. Falta: ${faltantes.join(', ')}.`,
+      400,
+      { faltantes }
+    );
+  }
+}
 
 /**
  * Reconstruye el objeto de dominio a partir de la fila de base de datos y le
@@ -68,6 +120,13 @@ async function aplicarTransicion(id, accion, opciones = {}) {
 
   const solicitud = hidratar(fila, opciones);
 
+  // Precondición propia de la acción (hoy: expediente completo para enviar).
+  // Solo corre si el ESTADO admite la acción: reenviar una solicitud ya
+  // enviada tiene que dar 409 por el estado, no 400 por los documentos.
+  if (opciones.precondicion && solicitud.accionesPermitidas.includes(opciones.accionAutorizada)) {
+    await opciones.precondicion(fila);
+  }
+
   // Aquí ocurre la delegación del patrón State. Si la transición es inválida,
   // esto lanza y el `actualizarEstado` de abajo nunca se ejecuta.
   accion(solicitud);
@@ -76,7 +135,7 @@ async function aplicarTransicion(id, accion, opciones = {}) {
   // Solicitud#cambiarEstado. Solo queda persistir el estado nuevo.
   await solicitudRepository.actualizarEstado(solicitud.id, solicitud.nombreEstado);
 
-  return solicitud.toJSON();
+  return formatoPublico(fila, solicitud);
 }
 
 /**
@@ -106,6 +165,16 @@ export async function crearSolicitud(estudianteId, tipo, { convocatoriaId = null
   // cerrada.
   if (convocatoriaId !== null && convocatoriaId !== undefined) {
     await exigirConvocatoriaAbierta(convocatoriaId, tipo);
+
+    // SCRUM-36: una sola solicitud vigente por convocatoria.
+    const existente = await solicitudRepository.vigenteEnConvocatoria(estudianteId, convocatoriaId);
+    if (existente !== null) {
+      throw errorDeNegocio(
+        `Ya tiene la solicitud ${existente} en esta convocatoria.`,
+        409,
+        { solicitudExistente: existente }
+      );
+    }
   }
 
   const borrador = new Solicitud({ estudiante: estudianteId });
@@ -128,6 +197,24 @@ export async function crearSolicitud(estudianteId, tipo, { convocatoriaId = null
 }
 
 /**
+ * Las solicitudes de quien pregunta, en el mismo formato que el detalle.
+ *
+ * Vive aquí y no en el controller: antes el controller llamaba directo al
+ * repositorio, saltándose esta capa.
+ *
+ * @param {{id: *}} usuario
+ * @returns {Promise<object[]>}
+ */
+export async function listarMisSolicitudes(usuario) {
+  if (!usuario || usuario.id === undefined || usuario.id === null) {
+    throw errorDeNegocio('No se identificó a quien solicita la acción.', 403);
+  }
+
+  const filas = await solicitudRepository.listarPorEstudiante(usuario.id);
+  return filas.map((fila) => formatoPublico(fila));
+}
+
+/**
  * Consulta una solicitud y las acciones que admite en su estado actual.
  * @param {number} id
  * @returns {Promise<object>}
@@ -143,7 +230,7 @@ export async function obtenerSolicitud(id, usuario) {
 
   await autorizar(ACCIONES.VER, fila, usuario);
 
-  return hidratar(fila).toJSON();
+  return formatoPublico(fila);
 }
 
 /**
@@ -155,6 +242,7 @@ export function enviarSolicitud(id, opciones = {}) {
   return aplicarTransicion(id, (solicitud) => solicitud.enviar(), {
     ...opciones,
     accionAutorizada: ACCIONES.ENVIAR,
+    precondicion: exigirExpedienteCompleto,
   });
 }
 
