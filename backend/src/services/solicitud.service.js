@@ -13,6 +13,7 @@ import * as solicitudRepository from '../repositories/solicitud.repository.js';
 import { Solicitud, crearEstadoDesdeNombre } from '../patterns/state/index.js';
 import { EmailNotificationListener } from '../patterns/observer/EmailNotificationListener.js';
 import { SolicitudFactory } from '../patterns/creational/SolicitudFactory.js';
+import { autorizar, ACCIONES } from './solicitud.autorizacion.js';
 
 /**
  * Reconstruye el objeto de dominio a partir de la fila de base de datos y le
@@ -58,6 +59,11 @@ async function aplicarTransicion(id, accion, opciones = {}) {
     error.status = 404;
     throw error;
   }
+
+  // Antes de tocar el estado: ¿tiene derecho quien lo pide? Va acá y no en
+  // cada función de abajo para que no se pueda agregar una transición nueva
+  // sin control de acceso.
+  await autorizar(opciones.accionAutorizada, fila, opciones.usuario);
 
   const solicitud = hidratar(fila, opciones);
 
@@ -107,7 +113,7 @@ export async function crearSolicitud(estudianteId, tipo) {
  * @param {number} id
  * @returns {Promise<object>}
  */
-export async function obtenerSolicitud(id) {
+export async function obtenerSolicitud(id, usuario) {
   const fila = await solicitudRepository.findById(id);
 
   if (!fila) {
@@ -115,6 +121,8 @@ export async function obtenerSolicitud(id) {
     error.status = 404;
     throw error;
   }
+
+  await autorizar(ACCIONES.VER, fila, usuario);
 
   return hidratar(fila).toJSON();
 }
@@ -124,8 +132,11 @@ export async function obtenerSolicitud(id) {
  * @param {number} id
  * @param {object} [opciones]
  */
-export function enviarSolicitud(id, opciones) {
-  return aplicarTransicion(id, (solicitud) => solicitud.enviar(), opciones);
+export function enviarSolicitud(id, opciones = {}) {
+  return aplicarTransicion(id, (solicitud) => solicitud.enviar(), {
+    ...opciones,
+    accionAutorizada: ACCIONES.ENVIAR,
+  });
 }
 
 /**
@@ -133,8 +144,11 @@ export function enviarSolicitud(id, opciones) {
  * @param {number} id
  * @param {object} [opciones]
  */
-export function evaluarSolicitud(id, opciones) {
-  return aplicarTransicion(id, (solicitud) => solicitud.evaluar(), opciones);
+export function evaluarSolicitud(id, opciones = {}) {
+  return aplicarTransicion(id, (solicitud) => solicitud.evaluar(), {
+    ...opciones,
+    accionAutorizada: ACCIONES.EVALUAR,
+  });
 }
 
 /**
@@ -143,8 +157,11 @@ export function evaluarSolicitud(id, opciones) {
  * @param {boolean} aprobado
  * @param {object} [opciones]
  */
-export function dictaminarSolicitud(id, aprobado, opciones) {
-  return aplicarTransicion(id, (solicitud) => solicitud.dictaminar(aprobado), opciones);
+export function dictaminarSolicitud(id, aprobado, opciones = {}) {
+  return aplicarTransicion(id, (solicitud) => solicitud.dictaminar(aprobado), {
+    ...opciones,
+    accionAutorizada: ACCIONES.DICTAMINAR,
+  });
 }
 
 /**
