@@ -166,16 +166,19 @@ sección que no se puede reconstruir del repositorio.›`
 Propuestos por el equipo a partir de lo encontrado en el Sprint. **El Product
 Owner decide si entran y con qué prioridad:**
 
-1. **Integración Continua** que ejecute las pruebas en cada push. Hoy nada
+1. **Pruebas reales en el frontend.** Los 2 archivos de prueba que existen no
+   importan código de producción: no pueden fallar ni aunque se borre el
+   frontend completo. La cobertura del cliente es **cero**, y nadie lo sabía.
+2. **Integración Continua** que ejecute las pruebas en cada push. Hoy nada
    impide mecánicamente que un Pull Request con pruebas rojas llegue a
    `develop`. Es la mejora de mejor relación costo/beneficio del proyecto.
-2. **Conectar la validación de identidad al flujo de envío.** El adaptador de
+3. **Conectar la validación de identidad al flujo de envío.** El adaptador de
    RENAP está implementado y probado, pero **solo lo importa su prueba**: es
    trabajo hecho que no está rindiendo.
-3. **Atender `npm audit`**: 4 vulnerabilidades en el backend, 1 crítica.
-4. **Promover `develop` a `main`.** `main` lleva 48 commits de atraso, de modo
+4. **Atender `npm audit`**: 4 vulnerabilidades en el backend, 1 crítica.
+5. **Promover `develop` a `main`.** `main` lleva 48 commits de atraso, de modo
    que no representa una versión desplegable.
-5. **Pantalla de convocatorias** (SCRUM-35 del backlog): el backend está
+6. **Pantalla de convocatorias** (SCRUM-35 del backlog): el backend está
    terminado y no hay forma de usarlo desde la aplicación.
 
 ### Repriorización
