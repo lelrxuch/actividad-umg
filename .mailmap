@@ -1,0 +1,27 @@
+# Normaliza las identidades de Git del equipo.
+#
+# POR QUE EXISTE ESTE ARCHIVO:
+# El historial tiene 14 identidades distintas para 5 personas, porque cada
+# quien configuro `user.name` y `user.email` de forma diferente en su maquina,
+# y GitHub agrega ademas una identidad `noreply` por cuenta. Sin esto,
+# `git shortlog -sne` reparte los commits de una misma persona en cuatro
+# lineas, y la participacion individual del proyecto se lee mal.
+#
+# Con este archivo:
+#   git shortlog -sne        muestra una linea por persona
+#   git log --author="..."   encuentra todos sus commits
+#
+# Formato: Nombre canonico <correo canonico> <correo que se debe mapear>
+
+Cristopher Isaí Contreras Salazar <cristopherisaics6@gmail.com>
+Cristopher Isaí Contreras Salazar <cristopherisaics6@gmail.com> <107316848+lelrxuch@users.noreply.github.com>
+
+Marco Antonio Rolando Corado García <mcoradog5@miumg.edu.gt>
+
+Jonatan Santiago <agozsant@gmail.com>
+
+Brayan David Sujuy Hernández <brayandavidsujuy147@gmail.com>
+Brayan David Sujuy Hernández <brayandavidsujuy147@gmail.com> <141304308+Davidshrnndz@users.noreply.github.com>
+
+José Daniel Pereira Cabrera <josedanielpereiracabrera@gmail.com>
+José Daniel Pereira Cabrera <josedanielpereiracabrera@gmail.com> <165003478+GhostGalactic@users.noreply.github.com>
