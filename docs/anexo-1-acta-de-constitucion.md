@@ -80,14 +80,20 @@ incluyendo pruebas unitarias, de integración y de aceptación, revisión de có
 mediante Pull Request, documentación actualizada y trazabilidad completa en el
 repositorio Git.
 
-**Avance verificable:** 314 pruebas en el backend y 19 en el frontend; 26
-endpoints; todo integrado por Pull Request con aprobación de otro miembro.
+**Avance verificable:** 314 pruebas en el backend; 26 endpoints; todo integrado
+por Pull Request con aprobación de otro miembro.
 
-**Lo que NO se cumple de este objetivo, y hay que decirlo:** el punto 7 del DoD
-exige despliegue en un entorno de pruebas y verificación del Product Owner. **No
-existe entorno de Staging**, de modo que ninguna Historia ha cumplido el 100 % de
-la Definición de Hecho. El detalle y las dos salidas posibles están en
-`docs/anexo-6-plan-de-calidad.md` §4.4.
+**Lo que NO se cumple de este objetivo, y hay que decirlo:**
+
+1. El punto 7 del DoD exige despliegue en un entorno de pruebas y verificación
+   del Product Owner. **No existe entorno de Staging**, de modo que ninguna
+   Historia ha cumplido el 100 % de la Definición de Hecho. El detalle y las dos
+   salidas posibles están en `docs/anexo-6-plan-de-calidad.md` §4.4.
+2. **El frontend no tiene pruebas reales.** Los 2 archivos de prueba que existen
+   no importan código de producción —su único `import` es de `vitest` y cada
+   aserción compara literales escritos dentro de la propia prueba—, así que no
+   pueden fallar. La cobertura del cliente es cero. Detalle en
+   `docs/anexo-6-plan-de-calidad.md` §4.5.
 
 ---
 
