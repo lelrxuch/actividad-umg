@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as solicitudRepository from '../repositories/solicitud.repository.js';
 import * as solicitudService from '../services/solicitud.service.js';
+import * as documentoRepository from '../repositories/documento.repository.js';
 import { TransicionInvalidaError } from '../patterns/state/index.js';
 
 // Se mockea solo la capa de datos: el service y los patrones se ejecutan de verdad.
@@ -9,6 +10,18 @@ vi.mock('../repositories/solicitud.repository.js', () => ({
   crear: vi.fn(),
   actualizarEstado: vi.fn(),
 }));
+
+// La autorización pregunta quién está asignado como evaluador. Desde la
+// corrección de SCRUM-35 cada transición exige un actor con derecho a pedirla,
+// así que las pruebas pasan uno explícito.
+vi.mock('../repositories/documento.repository.js', () => ({
+  evaluadoresDeSolicitud: vi.fn(),
+}));
+
+/** El estudiante dueño de las filas de prueba. */
+const DUENO = { id: 3, rol: 'estudiante' };
+/** Un evaluador asignado a la solicitud de prueba. */
+const EVALUADOR = { id: 77, rol: 'evaluador' };
 
 /** Fila tal como la devolvería la tabla `solicitudes`. */
 function filaEnEstado(estado, id = 42) {
@@ -22,6 +35,7 @@ describe('solicitud.service — integración de los patrones State y Observer', 
     vi.clearAllMocks();
     transporteCorreo = vi.fn();
     solicitudRepository.actualizarEstado.mockResolvedValue({});
+    documentoRepository.evaluadoresDeSolicitud.mockResolvedValue([EVALUADOR.id]);
   });
 
   describe('crearSolicitud', () => {
@@ -41,7 +55,7 @@ describe('solicitud.service — integración de los patrones State y Observer', 
     it('enviarSolicitud persiste el estado Enviada', async () => {
       solicitudRepository.findById.mockResolvedValue(filaEnEstado('Borrador'));
 
-      const resultado = await solicitudService.enviarSolicitud(42);
+      const resultado = await solicitudService.enviarSolicitud(42, { usuario: DUENO });
 
       expect(solicitudRepository.actualizarEstado).toHaveBeenCalledWith(42, 'Enviada');
       expect(resultado.estado).toBe('Enviada');
@@ -50,7 +64,7 @@ describe('solicitud.service — integración de los patrones State y Observer', 
     it('evaluarSolicitud persiste el estado En Evaluación', async () => {
       solicitudRepository.findById.mockResolvedValue(filaEnEstado('Enviada'));
 
-      await solicitudService.evaluarSolicitud(42);
+      await solicitudService.evaluarSolicitud(42, { usuario: EVALUADOR });
 
       expect(solicitudRepository.actualizarEstado).toHaveBeenCalledWith(42, 'En Evaluación');
     });
@@ -58,7 +72,7 @@ describe('solicitud.service — integración de los patrones State y Observer', 
     it('dictaminarSolicitud(true) persiste Aprobada', async () => {
       solicitudRepository.findById.mockResolvedValue(filaEnEstado('En Evaluación'));
 
-      await solicitudService.dictaminarSolicitud(42, true);
+      await solicitudService.dictaminarSolicitud(42, true, { usuario: EVALUADOR });
 
       expect(solicitudRepository.actualizarEstado).toHaveBeenCalledWith(42, 'Aprobada');
     });
@@ -66,7 +80,7 @@ describe('solicitud.service — integración de los patrones State y Observer', 
     it('dictaminarSolicitud(false) persiste Rechazada', async () => {
       solicitudRepository.findById.mockResolvedValue(filaEnEstado('En Evaluación'));
 
-      await solicitudService.dictaminarSolicitud(42, false);
+      await solicitudService.dictaminarSolicitud(42, false, { usuario: EVALUADOR });
 
       expect(solicitudRepository.actualizarEstado).toHaveBeenCalledWith(42, 'Rechazada');
     });
@@ -76,7 +90,7 @@ describe('solicitud.service — integración de los patrones State y Observer', 
     it('propaga TransicionInvalidaError al intentar dictaminar un Borrador', async () => {
       solicitudRepository.findById.mockResolvedValue(filaEnEstado('Borrador'));
 
-      await expect(solicitudService.dictaminarSolicitud(42, true)).rejects.toThrow(
+      await expect(solicitudService.dictaminarSolicitud(42, true, { usuario: EVALUADOR })).rejects.toThrow(
         TransicionInvalidaError
       );
     });
@@ -84,7 +98,7 @@ describe('solicitud.service — integración de los patrones State y Observer', 
     it('NO escribe en base de datos cuando la transición es inválida', async () => {
       solicitudRepository.findById.mockResolvedValue(filaEnEstado('Aprobada'));
 
-      await expect(solicitudService.enviarSolicitud(42)).rejects.toThrow(TransicionInvalidaError);
+      await expect(solicitudService.enviarSolicitud(42, { usuario: DUENO })).rejects.toThrow(TransicionInvalidaError);
 
       expect(solicitudRepository.actualizarEstado).not.toHaveBeenCalled();
     });
@@ -92,7 +106,7 @@ describe('solicitud.service — integración de los patrones State y Observer', 
     it('devuelve 404 cuando la solicitud no existe', async () => {
       solicitudRepository.findById.mockResolvedValue(null);
 
-      await expect(solicitudService.enviarSolicitud(404)).rejects.toMatchObject({ status: 404 });
+      await expect(solicitudService.enviarSolicitud(404, { usuario: DUENO })).rejects.toMatchObject({ status: 404 });
       expect(solicitudRepository.actualizarEstado).not.toHaveBeenCalled();
     });
   });
@@ -102,6 +116,7 @@ describe('solicitud.service — integración de los patrones State y Observer', 
       solicitudRepository.findById.mockResolvedValue(filaEnEstado('Enviada'));
 
       await solicitudService.evaluarSolicitud(42, {
+        usuario: EVALUADOR,
         correoEstudiante: 'ana@miumg.edu.gt',
         transporteCorreo,
       });
@@ -119,6 +134,7 @@ describe('solicitud.service — integración de los patrones State y Observer', 
 
       await expect(
         solicitudService.evaluarSolicitud(42, {
+          usuario: EVALUADOR,
           correoEstudiante: 'ana@miumg.edu.gt',
           transporteCorreo,
         })
@@ -132,7 +148,7 @@ describe('solicitud.service — integración de los patrones State y Observer', 
     it('informa qué acciones admite la solicitud en su estado actual', async () => {
       solicitudRepository.findById.mockResolvedValue(filaEnEstado('En Evaluación'));
 
-      const solicitud = await solicitudService.obtenerSolicitud(42);
+      const solicitud = await solicitudService.obtenerSolicitud(42, DUENO);
 
       expect(solicitud).toMatchObject({
         estado: 'En Evaluación',
@@ -143,7 +159,7 @@ describe('solicitud.service — integración de los patrones State y Observer', 
     it('un estado final no admite ninguna acción', async () => {
       solicitudRepository.findById.mockResolvedValue(filaEnEstado('Aprobada'));
 
-      const solicitud = await solicitudService.obtenerSolicitud(42);
+      const solicitud = await solicitudService.obtenerSolicitud(42, DUENO);
 
       expect(solicitud.accionesPermitidas).toEqual([]);
     });
