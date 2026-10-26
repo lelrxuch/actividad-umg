@@ -350,8 +350,8 @@ flowchart LR
     classDef parcial fill:#fff3cd,stroke:#d39e00,color:#5c4500
     classDef falta fill:#e9ecef,stroke:#adb5bd,color:#495057
 
-    class CU01,CU02,CU03,CU04,CU05,CU06,CU07,CU08,CU09,CU10,CU13,CU14,CU15,CU16,CU22 listo
-    class CU11,CU12,CU25 parcial
+    class CU01,CU02,CU03,CU04,CU05,CU06,CU07,CU08,CU09,CU10,CU11,CU12,CU13,CU14,CU15,CU16,CU22 listo
+    class CU25 parcial
     class CU17,CU18,CU19,CU20,CU21,CU23,CU24,CU26 falta
 ```
 
@@ -471,26 +471,28 @@ se da el contrato acordado, que es lo que se usará al implementarlos.
 | **Patrones aplicados** | **Factory Method** (modalidad) y **State** (estado inicial) |
 | **Nota de diseño** | La modalidad se persiste. Mientras no se persistía, la validación de tipo de documento de CU-14 quedaba sin efecto porque no había con qué comparar |
 
-**CU-11 — Validar identidad contra RENAP** · *Parcial* · `RenapAdapter`
+**CU-11 — Validar identidad contra RENAP** · *Implementado* · `RenapAdapter`
 
 | | |
 |---|---|
 | **Actores** | Estudiante (iniciador), Servicio de Identidad RENAP (secundario) |
-| **Estado** | El adaptador existe, está probado y se consume por la interfaz `IValidacionIdentidad`. **Falta conectarlo al flujo de envío (CU-12)** |
-| **Flujo principal** | 1. El sistema envía el CUI de 13 dígitos al servicio de identidad.<br>2. El servicio responde con el código de resultado.<br>3. El adaptador traduce esa respuesta al vocabulario del dominio |
-| **Flujos alternativos** | **2a.** CUI no encontrado → `IdentidadNoValidaError` → **400**.<br>**2b.** El servicio no responde → `ServicioIdentidadNoDisponibleError` → **503**, y el envío se puede reintentar |
+| **Estado** | Conectado al envío (CU-12) desde SCRUM-38. Se consume por la interfaz `IValidacionIdentidad` a través de `identidad.service` |
+| **Hueco que se encontró** | Este caso figuraba como "solo falta conectarlo", pero **el sistema no guardaba el CUI en ninguna tabla**: ni el registro ni la aplicación lo pedían. Se resolvió pidiéndolo al enviar y guardándolo en `solicitudes.cui` (nullable), sin tocar `usuarios` |
+| **Flujo principal** | 1. El estudiante escribe su CUI al enviar; puede llevar espacios o guiones.<br>2. El sistema envía el CUI de 13 dígitos al servicio de identidad.<br>3. El servicio responde con el código de resultado.<br>4. El adaptador traduce esa respuesta al vocabulario del dominio.<br>5. El sistema compara el nombre de RENAP con el del dueño de la solicitud: **cada palabra del nombre registrado debe aparecer en el de RENAP, con un mínimo de dos** ("Ana López" coincide con "ANA MARIA LOPEZ GARCIA") |
+| **Flujos alternativos** | **1a.** Sin CUI o con formato inválido → `IdentidadNoValidaError` → **400**, sin consultar RENAP.<br>**3a.** CUI no encontrado → `IdentidadNoValidaError` → **400**.<br>**3b.** El servicio no responde → `ServicioIdentidadNoDisponibleError` → **503**, y el envío se puede reintentar.<br>**5a.** El nombre no coincide → **400**. El mensaje **no revela** el nombre que tiene RENAP para ese CUI |
+| **Postcondición** | El CUI validado, normalizado a 13 dígitos, queda en `solicitudes.cui` |
 | **Patrón aplicado** | **Adapter**. Hoy la interfaz la implementa un cliente simulado; el cambio al servicio real no toca el service ni el controller |
 
-**CU-12 — Enviar solicitud** · *Parcial* · `POST /api/solicitudes/:id/enviar`
+**CU-12 — Enviar solicitud** · *Implementado* · `POST /api/solicitudes/:id/enviar` con `{ cui }`
 
 | | |
 |---|---|
 | **Actor** | Estudiante, y solo el dueño |
 | **Precondición** | La solicitud está en `Borrador` y el expediente está completo |
-| **Flujo principal** | 1. El sistema autoriza: **solo el dueño puede enviar**.<br>2. Revisa el expediente (CU-15).<br>3. *(Pendiente)* valida la identidad (CU-11).<br>4. Transiciona `Borrador → Enviada`.<br>5. Notifica al estudiante (CU-25) |
-| **Flujos alternativos** | **1a.** Lo intenta un tercero → **403** `No puede enviar una solicitud ajena.`<br>**2a.** Expediente incompleto → **400** con `faltantes`.<br>**4a.** La solicitud no está en `Borrador` → **409** |
-| **Postcondición** | La solicitud queda en `Enviada` y **sus datos pasan a solo lectura** |
-| **Lo que falta** | El paso 3. La validación de identidad no está enganchada al envío |
+| **Flujo principal** | 1. El sistema autoriza: **solo el dueño puede enviar**.<br>2. Comprueba que el estado admita el envío.<br>3. Revisa el expediente (CU-15).<br>4. Valida la identidad contra RENAP (CU-11).<br>5. Transiciona `Borrador → Enviada` y guarda el CUI en el mismo UPDATE.<br>6. Notifica al estudiante (CU-25) |
+| **Flujos alternativos** | **1a.** Lo intenta un tercero → **403** `No puede enviar una solicitud ajena.`<br>**2a.** La solicitud no está en `Borrador` → **409**.<br>**3a.** Expediente incompleto → **400** con `faltantes`.<br>**4a.** CUI inválido, inexistente o de otra persona → **400**.<br>**4b.** RENAP no responde → **503**; la solicitud sigue en `Borrador` y se puede reintentar |
+| **Postcondición** | La solicitud queda en `Enviada`, con el CUI con que se envió, y **sus datos pasan a solo lectura** |
+| **Nota de diseño** | El orden es deliberado. RENAP va al final porque es la única llamada externa: no se consulta si otra regla ya rechazó el envío. Un tercero recibe 403 antes de enterarse del estado o del expediente ajeno |
 
 **CU-13 — Consultar mi solicitud** · *Implementado* · `GET /api/solicitudes`, `GET /api/solicitudes/:id`
 

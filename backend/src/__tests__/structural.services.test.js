@@ -81,6 +81,21 @@ describe('identidad.service — integración del Adapter (SCRUM-31)', () => {
     expect(coincide.coincideNombre).toBe(true);
     expect(noCoincide.coincideNombre).toBe(false);
   });
+
+  it('acepta el nombre corto con que se registró la gente (SCRUM-38)', async () => {
+    // RENAP tiene "ANA MARIA LOPEZ GARCIA"; nadie se registra así.
+    for (const nombre of ['Ana López', 'Ana María López', 'López García', 'ana garcia']) {
+      const { coincideNombre } = await identidadService.validarIdentidadConNombre(CUI_ANA, nombre);
+      expect(coincideNombre, nombre).toBe(true);
+    }
+  });
+
+  it('rechaza una sola palabra, palabras ajenas y palabras a medias', async () => {
+    for (const nombre of ['Ana', 'Ana Ana', 'Ana Pérez', 'An López', 'Anabel López', '']) {
+      const { coincideNombre } = await identidadService.validarIdentidadConNombre(CUI_ANA, nombre);
+      expect(coincideNombre, nombre).toBe(false);
+    }
+  });
 });
 
 describe('documento.service — integración del Proxy (SCRUM-31)', () => {

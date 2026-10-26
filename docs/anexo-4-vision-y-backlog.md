@@ -112,7 +112,7 @@ está verificado contra `develop` al 22/10/2026.
 |---|---|---|
 | **EPIC-00** | Gestión de Cuentas de Usuario | 🟢 Terminado |
 | **EPIC-01** | Convocatorias | 🟢 Backend terminado, falta pantalla |
-| **EPIC-02** | Solicitudes | 🟡 Backend terminado salvo validación de identidad |
+| **EPIC-02** | Solicitudes | 🟡 Envío con validación de identidad terminado; falta SCRUM-37 |
 | **EPIC-03** | Documentación y Expedientes | 🟢 Backend terminado |
 | **EPIC-04** | Comités de Evaluación | ⚪ Pendiente |
 | **EPIC-05** | Evaluaciones | ⚪ Pendiente |
@@ -220,7 +220,7 @@ Criterios de aceptación:
 - Los datos se pueden modificar mientras la solicitud esté en `Borrador`
 - Una vez enviada, quedan en solo lectura
 
-**SCRUM-38 — Validar identidad contra RENAP** · 🟡 · Prioridad **Media**
+**SCRUM-38 — Validar identidad contra RENAP** · 🟢 · Prioridad **Media**
 
 > Como administradora, quiero que el CUI del solicitante se verifique contra el
 > registro nacional para no adjudicar a una identidad inexistente.
@@ -231,10 +231,27 @@ Criterios de aceptación:
 - El cambio de proveedor de validación no debe requerir tocar la lógica de
   negocio
 
-Estado: el adaptador existe y está probado, pero **solo lo importa su prueba**.
-Falta conectarlo al flujo de envío.
+**Hueco que no estaba documentado.** Esta historia figuraba como "solo falta
+conectar el adaptador", pero el sistema **no guardaba el CUI del estudiante en
+ninguna tabla**: ni `usuarios` ni el registro ni la aplicación lo pedían, así
+que al enviar no había ningún CUI que validar.
 
-**SCRUM-39 — Enviar solicitud** · 🟡 · Prioridad **Alta**
+Cómo quedó:
+- El CUI se pide **al enviar** (`POST /api/solicitudes/:id/enviar` con
+  `{ cui }`) y la pantalla de la solicitud tiene el campo.
+- Además de que el CUI exista, el nombre de RENAP se compara con el del dueño
+  de la solicitud, para que nadie envíe con el CUI de otra persona. La
+  comparación no exige el nombre legal completo: cada palabra del nombre
+  registrado tiene que aparecer en el de RENAP, con un mínimo de dos ("Ana
+  López" coincide con "ANA MARIA LOPEZ GARCIA"; "Ana" sola, no).
+- El CUI validado se guarda en `solicitudes.cui` (nullable), en el mismo UPDATE
+  que el estado. No toca a los usuarios existentes y deja constancia de con qué
+  CUI se envió cada solicitud.
+- RENAP es la **última** comprobación del envío, por ser la única llamada
+  externa: quién (403), estado (409), expediente (400) y luego identidad (400 o
+  503). Si RENAP falla, el estado no cambia.
+
+**SCRUM-39 — Enviar solicitud** · 🟢 · Prioridad **Alta**
 
 > Como aspirante, quiero enviar mi solicitud cuando mi expediente esté completo.
 
@@ -243,7 +260,7 @@ Criterios de aceptación:
 - No se puede enviar si el expediente está incompleto
 - Una vez enviada, los datos quedan en solo lectura
 - Un intento de transición inválida devuelve 409
-- Falta: la validación de identidad de SCRUM-38 dentro de este flujo
+- Exige un CUI válido y del dueño (SCRUM-38), como última comprobación
 
 **SCRUM-40 — Consultar estado de mi solicitud** · 🟢 · Prioridad **Alta**
 

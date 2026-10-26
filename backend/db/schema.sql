@@ -40,6 +40,12 @@ CREATE TABLE IF NOT EXISTS solicitudes (
 -- filas existentes no tienen modalidad y no hay forma de deducirla.
 ALTER TABLE solicitudes ADD COLUMN IF NOT EXISTS tipo VARCHAR(30);
 
+-- CUI con que se envio la solicitud, ya validado contra RENAP (SCRUM-38).
+-- Nullable: los borradores y las solicitudes enviadas antes de SCRUM-38 no
+-- tienen. Vive aqui y no en `usuarios` para no tocar a los usuarios existentes
+-- y dejar constancia de con que CUI se envio cada una.
+ALTER TABLE solicitudes ADD COLUMN IF NOT EXISTS cui CHAR(13);
+
 -- 'pendiente' era el DEFAULT antes del patron State y ya no existe en el codigo.
 -- Se migra ANTES de agregar el CHECK para que no falle en bases con datos.
 UPDATE solicitudes SET estado = 'Borrador' WHERE estado = 'pendiente';

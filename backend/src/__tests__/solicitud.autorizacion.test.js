@@ -22,6 +22,15 @@ vi.mock('../repositories/documento.repository.js', () => ({
   listarDeSolicitud: vi.fn(),
 }));
 
+// Desde SCRUM-38 enviar valida el CUI contra RENAP (simulado, en memoria) y
+// compara su nombre con el del dueño de la solicitud.
+vi.mock('../repositories/usuario.repository.js', () => ({
+  findById: vi.fn(async (id) => ({ id, nombre: 'Ana López' })),
+}));
+
+/** CUI que el simulador de RENAP conoce: ANA MARIA LOPEZ GARCIA. */
+const CUI_ANA = '1234567890101';
+
 const DUENO = { id: 3, rol: 'estudiante' };
 const OTRO_ESTUDIANTE = { id: 9, rol: 'estudiante' };
 const EVALUADOR_ASIGNADO = { id: 77, rol: 'evaluador' };
@@ -44,7 +53,7 @@ describe('autorización de solicitudes — enviar', () => {
 
   it('el dueño envía su solicitud', async () => {
     await expect(
-      solicitudService.enviarSolicitud(42, { usuario: DUENO })
+      solicitudService.enviarSolicitud(42, { usuario: DUENO, cui: CUI_ANA })
     ).resolves.toMatchObject({ estado: 'Enviada' });
   });
 
@@ -195,7 +204,7 @@ describe('autorización de solicitudes — administrador', () => {
 
     solicitudRepository.findById.mockResolvedValue(fila('Borrador'));
     await expect(
-      solicitudService.enviarSolicitud(42, { usuario: ADMINISTRADOR })
+      solicitudService.enviarSolicitud(42, { usuario: ADMINISTRADOR, cui: CUI_ANA })
     ).resolves.toMatchObject({ estado: 'Enviada' });
 
     solicitudRepository.findById.mockResolvedValue(fila('En Evaluación'));

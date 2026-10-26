@@ -55,7 +55,12 @@ esac
 # ───────────────────────────────────────────────────────────────────────────────
 t "2. Registro con correo institucional"
 DUENO="duena.$SUFIJO@miumg.edu.gt"
-registrar "Ana Lucía Pérez" "$DUENO"
+# El nombre tiene que poder validarse contra RENAP al enviar (SCRUM-38). El
+# simulador solo conoce dos CUI; este es el de ANA MARIA LOPEZ GARCIA, y basta
+# con que cada palabra del nombre registrado aparezca en el de RENAP.
+CUI_ANA=1234567890101
+CUI_CARLOS=2345678901202
+registrar "Ana López" "$DUENO"
 comparar "login de la cuenta nueva" "200" "$(codigo -X POST "$API/api/auth/login" -H 'Content-Type: application/json' -d "{\"email\":\"$DUENO\",\"password\":\"$CLAVE\"}")"
 TK_DUENO=$(token "$DUENO")
 [ -n "$TK_DUENO" ] && ok "token recibido: ${TK_DUENO:0:28}…" || mal "no se recibió token"
@@ -185,13 +190,22 @@ else
         -F "solicitudId=$ID_SOL" -F "tipo=$faltante" -F "archivo=@$ARCH;type=application/pdf")"
       rm -f "$ARCH"
     done
+    echo "   SCRUM-38: con el expediente completo, lo último que se revisa es la"
+    echo "   identidad contra RENAP. Un CUI que no sirve da 400 y la deja en Borrador."
+    comparar "enviar sin CUI"                 "400" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/enviar" -H "Authorization: Bearer $TK_DUENO")"
+    comparar "enviar con un CUI inexistente"  "400" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/enviar" \
+      -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_DUENO" -d '{"cui":"9999999999999"}')"
+    comparar "enviar con el CUI de otra persona" "400" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/enviar" \
+      -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_DUENO" -d "{\"cui\":\"$CUI_CARLOS\"}")"
     echo "   Ahora el ciclo en orden: Borrador → Enviada → En Evaluación → Aprobada"
-    comparar "el dueño envía"            "200" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/enviar"  -H "Authorization: Bearer $TK_DUENO")"
+    comparar "el dueño envía con su CUI" "200" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/enviar" \
+      -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_DUENO" -d "{\"cui\":\"$CUI_ANA\"}")"
     comparar "el evaluador pasa a evaluar" "200" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/evaluar" -H "Authorization: Bearer $TK_EV_SI")"
     comparar "el evaluador dictamina"    "200" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/dictamen" \
       -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_EV_SI" -d '{"aprobado":true}')"
     echo "   Y un estado final ya no admite nada:"
-    comparar "reenviar una Aprobada" "409" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/enviar" -H "Authorization: Bearer $TK_DUENO")"
+    comparar "reenviar una Aprobada" "409" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/enviar" \
+      -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_DUENO" -d "{\"cui\":\"$CUI_ANA\"}")"
     curl -s "$API/api/solicitudes/$ID_SOL" -H "Authorization: Bearer $TK_DUENO" | sed 's/^/   /'
   fi
 fi

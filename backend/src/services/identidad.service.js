@@ -35,6 +35,9 @@ export async function validarIdentidad(cui, { validador = validadorPorDefecto } 
   return validador.validarCUI(cui);
 }
 
+/** Palabras que como mínimo debe tener el nombre declarado para compararse. */
+const MINIMO_PALABRAS = 2;
+
 /**
  * Comprueba si el nombre declarado por el estudiante coincide con el del
  * registro civil, además de que el CUI exista.
@@ -43,6 +46,12 @@ export async function validarIdentidad(cui, { validador = validadorPorDefecto } 
  * repetidos— porque RENAP devuelve los nombres en mayúsculas y sin tildes, y
  * rechazar a alguien por haber escrito "José" en vez de "JOSE" sería un falso
  * negativo que bloquearía un registro legítimo.
+ *
+ * Por la misma razón no exige el nombre completo (SCRUM-38): RENAP devuelve el
+ * nombre legal ("ANA MARIA LOPEZ GARCIA") y la gente se registra como "Ana
+ * López". Basta con que cada palabra declarada aparezca, entera, en el nombre
+ * de RENAP, y que sean al menos dos: con una sola, "Ana" coincidiría con media
+ * Guatemala.
  *
  * @param {string} cui
  * @param {string} nombreDeclarado Nombre tal como lo escribió el estudiante.
@@ -53,19 +62,24 @@ export async function validarIdentidad(cui, { validador = validadorPorDefecto } 
 export async function validarIdentidadConNombre(cui, nombreDeclarado, opciones = {}) {
   const identidad = await validarIdentidad(cui, opciones);
 
-  return { ...identidad, coincideNombre: normalizar(identidad.nombre) === normalizar(nombreDeclarado) };
+  const delRegistro = new Set(palabras(identidad.nombre));
+  const declaradas = new Set(palabras(nombreDeclarado));
+  const coincideNombre =
+    declaradas.size >= MINIMO_PALABRAS && [...declaradas].every((palabra) => delRegistro.has(palabra));
+
+  return { ...identidad, coincideNombre };
 }
 
 /**
- * Deja un nombre comparable: sin acentos, en minúsculas y con un solo espacio.
+ * Parte un nombre en palabras comparables: sin acentos y en minúsculas.
  * @param {string} texto
- * @returns {string}
+ * @returns {string[]}
  */
-function normalizar(texto) {
+function palabras(texto) {
   return String(texto ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ');
+    .split(/\s+/)
+    .filter(Boolean);
 }

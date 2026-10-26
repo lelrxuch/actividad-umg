@@ -5,7 +5,8 @@
 // Qué documentos exige la solicitud, qué acciones admite su estado y si el
 // expediente está completo lo decide el backend. Esta pantalla muestra lo que
 // él responde y no replica ninguna de esas reglas: si el backend dice que
-// faltan documentos al enviar, se muestran SUS faltantes.
+// faltan documentos al enviar, se muestran SUS faltantes. Lo mismo con el CUI
+// (SCRUM-38): la pantalla lo pide y el backend lo valida contra RENAP.
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { obtenerSolicitud, enviarSolicitud } from '../services/solicitudService';
@@ -28,6 +29,8 @@ export const SolicitudPage = () => {
   const [faltantes, setFaltantes] = useState([]);
   const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState('');
+  const [avisoEsError, setAvisoEsError] = useState(false);
+  const [cui, setCui] = useState('');
 
   useEffect(() => {
     let vigente = true;
@@ -74,11 +77,15 @@ export const SolicitudPage = () => {
     setAviso('');
     setEnviando(true);
     try {
-      const actualizada = await enviarSolicitud(id);
+      const actualizada = await enviarSolicitud(id, cui);
       setSolicitud(actualizada);
+      setAvisoEsError(false);
       setAviso('Su solicitud fue enviada. Puede consultar aquí su avance.');
     } catch (e) {
+      // Antes el aviso solo se pintaba como error si había faltantes; un CUI
+      // rechazado o RENAP caído salían en verde, como si se hubiera enviado.
       setFaltantes(e.faltantes ?? []);
+      setAvisoEsError(true);
       setAviso(e.message);
     } finally {
       setEnviando(false);
@@ -114,12 +121,37 @@ export const SolicitudPage = () => {
         ))}
       </ul>
 
+      {puedeEnviar && (
+        <div style={styles.campo}>
+          <label htmlFor="cui" style={styles.etiqueta}>CUI (número de su DPI)</label>
+          <input
+            id="cui"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="1234 56789 0101"
+            maxLength={16}
+            value={cui}
+            onChange={(e) => setCui(e.target.value)}
+            disabled={enviando}
+            style={styles.input}
+          />
+          <p style={styles.ayuda}>Se verifica contra RENAP al enviar. Debe ser el suyo.</p>
+        </div>
+      )}
+
       {aviso && (
-        <p style={faltantes.length > 0 ? styles.avisoError : styles.avisoOk} role="status">{aviso}</p>
+        <p
+          style={avisoEsError ? styles.avisoError : styles.avisoOk}
+          data-tipo={avisoEsError ? 'error' : 'ok'}
+          role="status"
+        >
+          {aviso}
+        </p>
       )}
 
       {puedeEnviar && (
-        <button type="button" style={styles.boton} onClick={enviar} disabled={enviando}>
+        <button type="button" style={styles.boton} onClick={enviar} disabled={enviando || !cui.trim()}>
           {enviando ? 'Enviando…' : 'Enviar a evaluación'}
         </button>
       )}
@@ -203,6 +235,9 @@ const styles = {
   itemError: { margin: '0.3rem 0 0', fontSize: '0.82rem', color: theme.colors.error },
   botonSecundario: { position: 'relative', whiteSpace: 'nowrap', cursor: 'pointer', border: `1px solid ${theme.colors.primary}`, color: theme.colors.primary, borderRadius: theme.borderRadius.md, padding: '0.4rem 0.85rem', fontSize: '0.84rem', fontWeight: 600 },
   inputOculto: { position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' },
+  campo: { marginTop: '1.4rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', maxWidth: '320px' },
+  etiqueta: { fontSize: '0.88rem', fontWeight: 600, color: theme.colors.textPrimary },
+  input: { padding: '0.55rem 0.7rem', border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, fontSize: '0.92rem' },
   avisoOk: { margin: '1rem 0 0', color: theme.colors.success, fontSize: '0.9rem' },
   avisoError: { margin: '1rem 0 0', color: theme.colors.error, fontSize: '0.9rem' },
   boton: { marginTop: '1.2rem', backgroundColor: theme.colors.primary, color: '#fff', border: 'none', borderRadius: theme.borderRadius.md, padding: '0.6rem 1.2rem', fontSize: '0.92rem', fontWeight: 600, cursor: 'pointer' },

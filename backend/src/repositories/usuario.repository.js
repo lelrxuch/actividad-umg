@@ -7,6 +7,16 @@ export async function findByEmail(email) {
 }
 
 /**
+ * Busca un usuario por su identificador, sin datos de credenciales.
+ * @param {number} id
+ * @returns {Promise<{id: number, nombre: string, email: string, rol: string}|null>}
+ */
+export async function findById(id) {
+  const result = await pool.query('SELECT id, nombre, email, rol FROM usuarios WHERE id = $1', [id]);
+  return result.rows[0] || null;
+}
+
+/**
  * Inserta un usuario nuevo.
  *
  * `nombre` es NOT NULL en el esquema, por eso es obligatorio aquí. No devuelve
