@@ -9,8 +9,8 @@
 | **Catedrático / Product Owner / Scrum Master** | Ing. Mario Fuentes |
 | **Responsable de Calidad** | Todo el Equipo Scrum |
 | **Redacción del plan** | Marco Antonio Rolando Corado García (QA / Tester) |
-| **Versión del Documento** | 1.0 |
-| **Fecha de Actualización** | 22/10/2026 |
+| **Versión del Documento** | 1.1 |
+| **Fecha de Actualización** | 27/10/2026 |
 
 ---
 
@@ -77,7 +77,7 @@ que nadie siguió no es un manual verificado.**
 |---|---|
 | Código de la aplicación | Limpio, mantenible, legible, con las capas respetadas |
 | Scripts de base de datos | Versionados e **idempotentes**: `schema.sql` se puede re-aplicar sobre una base con datos sin error y sin pérdida |
-| Código de pruebas | Que exista, que cubra la lógica de negocio y que **falle cuando el código se rompe**. Las 19 pruebas del frontend no cumplen este criterio: no importan código de producción (ver §4.5) |
+| Código de pruebas | Que exista, que cubra la lógica de negocio y que **falle cuando el código se rompe**. Hasta el 22/10 el frontend no cumplía este criterio (ver §4.5); hoy sí |
 
 ### 3.3 Incremento del producto
 
@@ -140,7 +140,7 @@ dos patrones, probablemente por considerarlo ruido.
 | ESLint | Backend | **No existe.** Carencia declarada |
 
 La inconsistencia es real y está reconocida: el backend, que es donde vive toda
-la lógica de negocio y las 314 pruebas, **no tiene análisis estático**. Es una
+la lógica de negocio y las 353 pruebas, **no tiene análisis estático**. Es una
 de las mejoras pendientes de la sección 9.
 
 ### 4.4 Definición de "Hecho" (DoD)
@@ -151,7 +151,7 @@ completa si no lo cumple entero.
 | | Punto del DoD | ¿Se cumple? |
 |---|---|---|
 | 1 | El código está en la rama `develop` del repositorio | **Sí.** Todo entra por Pull Request |
-| 2 | Se crearon y pasan todas las pruebas unitarias correspondientes | **Solo en el backend:** 314 pruebas. **En el frontend NO se cumple**: los 2 archivos de prueba que existen no importan código de producción y no pueden fallar. Cobertura real del frontend: cero |
+| 2 | Se crearon y pasan todas las pruebas unitarias correspondientes | **Sí.** 353 pruebas en el backend y 85 en el frontend, todas contra código de producción y verificadas con mutantes. Hasta el 22/10 el frontend no lo cumplía: ver abajo |
 | 3 | El código fue revisado y aprobado por al menos otro miembro | **Sí.** Ningún PR se mergea sin aprobación |
 | 4 | La funcionalidad cumple todos los Criterios de Aceptación | **Sí**, verificado en la Sprint Review |
 | 5 | No se introdujeron nuevos defectos | **Parcial.** La suite de regresión lo cubre, pero nada lo verifica mecánicamente: no hay CI |
@@ -178,14 +178,14 @@ El equipo recomienda **(b)** para lo que resta del curso, y dejar **(a)**
 registrada como mejora. Lo que no es aceptable es mantener escrito un punto que
 nadie cumple.
 
-#### Las 19 pruebas del frontend no verifican nada
+#### Las 19 pruebas del frontend no verificaban nada (resuelto)
 
-Se descubrió al revisar los archivos para redactar este plan, y obliga a
-corregir el punto 2 de la tabla anterior.
+Se descubrió al revisar los archivos para redactar este plan, y obligó a marcar
+el punto 2 de la tabla anterior como incumplido en el frontend.
 
-Los dos archivos de prueba del frontend —`usuarioService.test.js` y
-`passwordService.test.js`— **no importan un solo módulo de producción**. Su
-único `import` es de `vitest`, y cada aserción compara literales escritos
+Los dos archivos de prueba que tenía el frontend —`usuarioService.test.js` y
+`passwordService.test.js`— **no importaban un solo módulo de producción**. Su
+único `import` era de `vitest`, y cada aserción comparaba literales escritos
 dentro de la propia prueba:
 
 ```js
@@ -194,21 +194,22 @@ const confirmPassword = 'Contraseña123';
 expect(password === confirmPassword).toBe(true);
 ```
 
-Eso afirma que `'Contraseña123' === 'Contraseña123'`. **No puede fallar nunca**,
-ni aunque se borre el frontend completo.
+Eso afirma que `'Contraseña123' === 'Contraseña123'`. **No podía fallar nunca**,
+ni aunque se borrara el frontend completo.
 
 Es precisamente el error contra el que existe la sección 2.3 de este plan: se
 contaron 19 pruebas como evidencia de calidad sin comprobar que verificaran
-algo. **La cobertura real del frontend es cero**, y el total honesto del
-proyecto es 314 pruebas, no 333.
+algo. Durante ese tiempo, la cobertura real del frontend fue cero.
 
-Entra como la mejora de mayor prioridad del frontend: escribir pruebas que
-importen `services/authService.js` y las pantallas, y demostrar con un mutante
-que fallan.
+**Cómo se resolvió.** Los dos archivos se borraron (PR #34) y se reemplazaron por
+pruebas que importan el código real: hoy son 85 en 7 archivos, entre servicios,
+utilidades y pantallas. Cada entrega se verificó con mutantes: 22 de 22
+atrapados en el frontend del flujo del estudiante (PR #34 y #35). El detalle
+está en el ANEXO 7 §6.3.
 
 #### Dos incumplimientos más, declarados
 
-**`main` está 48 commits detrás de `develop`.** La sección 7 de este plan dice
+**`main` está 69 commits detrás de `develop`.** La sección 7 de este plan dice
 que `main` representa siempre una versión estable y potencialmente desplegable.
 Hoy `main` no representa nada: es una foto vieja del proyecto. O se promueve
 `develop` a `main` al cerrar cada Sprint, o la regla está escrita de más.
@@ -224,8 +225,11 @@ Se corrigió junto con este plan, verificando archivo por archivo, y al hacerlo
 aparecieron dos cosas que nadie tenía registradas: `middlewares/error.middleware.js`
 y `repositories/expediente.repository.js` son archivos de dos líneas marcados
 `[FALTANTE]` que **nadie importa**, y `services/identidad.service.js` está
-implementado y probado pero **solo lo importa su prueba**, de modo que la
-validación de identidad contra RENAP no está conectada al flujo de envío.
+implementado y probado pero **solo lo importaba su prueba**, de modo que la
+validación de identidad contra RENAP no estaba conectada al flujo de envío. Al
+conectarla (SCRUM-38, PR #36) apareció un hueco mayor: el sistema no guardaba
+el CUI del estudiante en ninguna tabla, así que no había ningún CUI que
+validar. Ahora se pide al enviar y queda en `solicitudes.cui`.
 
 ---
 
@@ -481,17 +485,18 @@ Todos, sin excepción:
 |---:|---|---|---|
 | 1 | **Integración Continua** que ejecute `npm test` en cada push | Hoy todo el proceso depende de la memoria de las personas. Pasaría el punto 5 del DoD de *parcial* a *sí* | Un archivo de configuración |
 | 2 | **Resolver el punto 7 del DoD** | Un punto que nadie cumple vuelve decorativo al DoD entero | Una decisión del PO |
-| 3 | **Promover `develop` a `main`** al cerrar cada Sprint | `main` lleva 48 commits de atraso y no representa nada | Un merge por Sprint |
+| 3 | **Promover `develop` a `main`** al cerrar cada Sprint | `main` lleva 69 commits de atraso y no representa nada | Un merge por Sprint |
 | ~~4~~ | ~~**Corregir `ESTADO.md`**~~ | Declaraba los seis patrones como faltantes, con rutas que no existen. **Corregido junto con este plan**, y verificado archivo por archivo contra el repositorio | Hecho |
-| 5 | **Atender `npm audit`** | 4 vulnerabilidades en el backend, 1 crítica | Pendiente de evaluar el impacto |
+| 5 | **Atender `npm audit`** | 5 vulnerabilidades en el backend: 1 crítica, 2 altas y 2 moderadas | Pendiente de evaluar el impacto |
 | 6 | **ESLint en el backend** | Es donde vive toda la lógica y no tiene análisis estático | Un archivo de configuración |
 | 7 | **Medición de cobertura** | La verificación por mutación demuestra que lo probado sirve, pero no dice qué quedó sin probar | Configuración de Vitest |
 | 8 | **Pruebas automatizadas contra PostgreSQL real** | Hoy ninguna prueba ejecuta SQL: el repositorio siempre está mockeado | Alto. Requiere base de datos en el entorno de pruebas |
 
-### 10.1 Mejora que se adelanta a la lista: pruebas reales en el frontend
+### 10.1 Mejora que se adelantó a la lista: pruebas reales en el frontend
 
-Entra por encima de las ocho anteriores porque hoy **el frontend no está
-verificado en absoluto** y eso no se sabía. Ver §4.5.
+Entró por encima de las ocho anteriores porque el frontend no estaba
+verificado en absoluto y eso no se sabía. **Resuelta:** hoy tiene 85 pruebas
+contra código de producción. Ver §4.5.
 
 ---
 

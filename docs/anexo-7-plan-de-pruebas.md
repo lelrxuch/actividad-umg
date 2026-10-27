@@ -8,8 +8,8 @@
 | **Curso** | 0910-037 Análisis de Sistemas II — 8º Ciclo |
 | **Catedrático / Product Owner / Scrum Master** | Ing. Mario Fuentes |
 | **Responsable del Plan** | Marco Antonio Rolando Corado García (QA / Tester) |
-| **Versión del Documento** | 1.0 |
-| **Fecha de Actualización** | 22/10/2026 |
+| **Versión del Documento** | 1.1 |
+| **Fecha de Actualización** | 27/10/2026 |
 
 ---
 
@@ -67,10 +67,11 @@ Se declara explícitamente, para que no se asuma cobertura que no existe:
 
 - **Pruebas de carga y estrés.** El sistema no se ha probado con usuarios
   concurrentes. El curso no lo pide y el equipo no tiene entorno para medirlo.
-- **Pruebas de extremo a extremo sobre el navegador.** No hay Cypress ni
-  Playwright. **El frontend no tiene ninguna prueba real**: los 2 archivos de
-  prueba que existen no importan código de producción (ver 6.2). Hoy solo se
-  verifica de forma manual exploratoria.
+- **Pruebas de extremo a extremo automatizadas en el navegador.** No hay
+  Cypress ni Playwright en el repositorio. El frontend se prueba con 85 pruebas
+  de componentes y servicios (ver 6.2), que reemplazan al backend por dobles. El
+  flujo del estudiante se recorrió en un navegador real contra PostgreSQL al
+  revisar los PR #35 y #36, pero ese recorrido no está automatizado.
 - **Compatibilidad con navegadores obsoletos.** El frontend usa React 19 y Vite;
   no se prueba en Internet Explorer.
 - **Infraestructura y red.** No se prueba el servidor ni la configuración de red
@@ -148,15 +149,16 @@ integración, pocas de sistema. El estado actual respeta esa forma.
                    │  Sistema y       │  contra PostgreSQL real (15 pasos),
                    │  Aceptación      │  y la Sprint Review con el PO
                  ┌─┴──────────────────┴─┐
-                 │  Nivel 2             │  188 pruebas
-                 │  Integración         │  158 entre capas + 30 de controller
+                 │  Nivel 2             │  285 pruebas
+                 │  Integración         │  backend: 192 entre capas + 30 de controller
+                 │                      │  frontend: 28 de servicios + 35 de pantallas
              ┌───┴──────────────────────┴───┐
-             │  Nivel 1                     │  126 pruebas unitarias
-             │  Unitarias                   │  todas del backend
+             │  Nivel 1                     │  153 pruebas unitarias
+             │  Unitarias                   │  backend 131 + frontend 22
              └──────────────────────────────┘
 
-      Backend: 126 + 158 + 30 = 314.
-      Frontend: 19 archivos de prueba que no verifican nada (ver 6.2).
+      Backend:  131 + 192 + 30 = 353, en 20 archivos.
+      Frontend:  22 +  28 + 35 =  85, en 7 archivos.
 ```
 
 La clasificación no es declarativa: sale de qué mockea cada archivo. Una prueba
@@ -164,6 +166,12 @@ sin ningún mock, que ejercita una sola unidad, es unitaria. Una que mockea solo
 el repositorio, de modo que el servicio y los patrones corren de verdad, es de
 integración entre capas. Una que mockea el servicio para ejercitar el controller
 es de la capa de controller.
+
+En el frontend se aplica el mismo criterio. Son unitarias las que no mockean nada
+(`fechas.test.js`, `api.test.js`); de servicios, las que mockean solo el cliente
+HTTP, de modo que el servicio real arma la petición e interpreta la respuesta; y
+de pantallas, las que renderizan el componente real y mockean solo el servicio
+que consume.
 
 ### 6.1 Niveles de prueba
 
@@ -186,7 +194,7 @@ es de la capa de controller.
   componentes.
 - **Qué:** dos cosas distintas. La primera, la colaboración entre un servicio
   y los patrones que usa: se mockea **solo el repositorio**, así que el servicio
-  y los patrones se ejecutan de verdad (158 pruebas). La segunda, la capa de
+  y los patrones se ejecutan de verdad (192 pruebas). La segunda, la capa de
   controller: que un error de dominio llegue con su código HTTP, que el
   identificador del token se traduzca al del dominio, y que el catálogo de
   modalidades que viaja al frontend sea el mismo que declaran las clases de
@@ -211,9 +219,10 @@ es de la capa de controller.
   eso es el único que puede atrapar un error de esquema o de consulta.
 - **Herramientas:** el script `scripts/demo-api.sh`, un recorrido narrado de
   **15 pasos** que registra usuarios, crea una solicitud, sube un documento
-  real, recorre el ciclo de vida completo hasta Aprobada, e intenta cada
-  operación no autorizada verificando el código que devuelve; y la colección de
-  Postman para exploración dirigida.
+  real, valida la identidad contra RENAP al enviar (sin CUI, con un CUI
+  inexistente, con el de otra persona y con el propio), recorre el ciclo de vida
+  completo hasta Aprobada, e intenta cada operación no autorizada verificando el
+  código que devuelve; y la colección de Postman para exploración dirigida.
 - **Es idempotente y se autoverifica.** Cada ejecución crea sus propios usuarios
   con un sufijo único, así que se puede repetir sin limpiar la base. Cada paso
   compara el código HTTP obtenido contra el esperado, imprime ✓ o ✗, y el script
@@ -240,22 +249,23 @@ error en el futuro.
 
 ### 6.2 Inventario de la suite automatizada
 
-**Backend — 314 pruebas en 19 archivos:**
+**Backend — 353 pruebas en 20 archivos:**
 
 | Archivo | Pruebas | Qué cubre |
 |---|---:|---|
+| `solicitud.flujo-estudiante.test.js` | 32 | Expediente completo para enviar, una solicitud por convocatoria, identidad contra RENAP |
 | `convocatoria.service.test.js` | 30 | Reglas de negocio de convocatorias |
 | `auth.service.test.js` | 26 | Registro, login, dominios institucionales |
 | `patterns/state.test.js` | 27 | Ciclo de vida de la solicitud |
 | `documento.subida.test.js` | 27 | Lista blanca, tamaño, nombre en disco |
 | `patterns/structural.test.js` | 26 | Adapter y Proxy |
-| `convocatoria.state.test.js` | 21 | Ciclo de vida de la convocatoria |
+| `convocatoria.state.test.js` | 26 | Ciclo de vida de la convocatoria y si recibe solicitudes |
 | `patterns/creational.test.js` | 17 | Factory Method y Builder |
 | `patterns/observer.test.js` | 17 | Notificación al estudiante |
 | `solicitud.autorizacion.test.js` | 17 | Quién puede hacer qué |
 | `password.validator.test.js` | 18 | Política de contraseñas |
 | `expediente.documento.http.test.js` | 15 | Rutas de expedientes y documentos |
-| `structural.services.test.js` | 15 | Integración de Adapter y Proxy |
+| `structural.services.test.js` | 17 | Integración de Adapter y Proxy, comparación de nombres con RENAP |
 | `solicitud.service.test.js` | 12 | Integración de State y Observer |
 | `creational.services.test.js` | 10 | Integración de Factory y Builder |
 | `password.service.reset.test.js` | 8 | Token de recuperación |
@@ -264,39 +274,26 @@ error en el futuro.
 | `solicitud.modalidades.http.test.js` | 7 | Modalidades por HTTP |
 | `password.service.test.js` | 5 | Cambio de contraseña |
 
-**Frontend — 19 pruebas en 2 archivos, que NO cuentan como cobertura:**
+**Frontend — 85 pruebas en 7 archivos:**
 
 | Archivo | Pruebas | Qué cubre |
 |---|---:|---|
-| `usuarioService.test.js` | 11 | **Nada del código de producción** |
-| `passwordService.test.js` | 8 | **Nada del código de producción** |
+| `ConvocatoriasPage.test.jsx` | 20 | Días restantes, mensaje sin convocatorias, iniciar solicitud, redirección si ya existe una |
+| `SolicitudPage.test.jsx` | 15 | Expediente, subida de documentos, CUI, envío, solo lectura fuera de Borrador |
+| `fechas.test.js` | 15 | Días restantes sin desfase de zona horaria |
+| `solicitudYDocumentoService.test.js` | 12 | Peticiones de solicitudes y documentos, errores con `faltantes` |
+| `authService.test.js` | 9 | Registro, login y recuperación; propaga el mensaje del backend |
+| `convocatoriaService.test.js` | 7 | Listado y detalle de convocatorias |
+| `api.test.js` | 7 | Token de sesión en cada petición, aunque `localStorage` falle |
 
-Estas 19 pruebas **no importan un solo módulo del frontend**. Su único `import`
-es de `vitest`, y cada aserción compara literales escritos dentro de la propia
-prueba:
-
-```js
-it('debe detectar que las contraseñas coinciden', () => {
-  const password = 'Contraseña123';
-  const confirmPassword = 'Contraseña123';
-  expect(password === confirmPassword).toBe(true);
-});
-```
-
-Eso afirma que `'Contraseña123' === 'Contraseña123'`, que es cierto
-independientemente de lo que haga la aplicación. **No pueden fallar nunca**, ni
-siquiera si se borra el frontend completo. Por el criterio de la sección 6.3, una
-prueba que no puede fallar no es una prueba.
-
-**La cobertura real del frontend es cero.** Se cuentan aquí porque existen y
-porque `npm test` las reporta, pero no se acreditan como verificación de nada, y
-el total honesto del proyecto es **314 pruebas, no 333**.
-
-Esto se descubrió al revisar los archivos para redactar este plan, y es la razón
-por la que la sección 6.3 insiste en que el conteo de pruebas no significa nada
-por sí solo. La primera tarea de calidad del frontend es escribir pruebas que
-importen `services/authService.js` y las pantallas, y demostrar con un mutante
-que fallan.
+**Antecedente que conviene no olvidar.** Hasta el 22/10/2026 el frontend tenía
+2 archivos con 19 pruebas que **no importaban un solo módulo de producción**: su
+único `import` era de `vitest`, y cada aserción comparaba literales escritos
+dentro de la propia prueba (`expect('Contraseña123' === 'Contraseña123')`). No
+podían fallar ni aunque se borrara el frontend completo, y durante semanas se
+contaron como cobertura. Se borraron y se reemplazaron por las de la tabla de
+arriba, que sí importan el código real. Es la razón por la que la sección 6.3
+insiste en que el número de pruebas no significa nada por sí solo.
 
 ### 6.3 Verificación por mutación
 
@@ -320,13 +317,26 @@ Se escribió el módulo `solicitud.autorizacion.js` y se verificó así:
 cd backend && npm test
 ```
 
-Resultado: **10 de 314 pruebas fallan**. El control de acceso está cubierto.
+Resultado: **12 de 353 pruebas fallan**. El control de acceso está cubierto.
 
 Esta técnica también encontró un hueco en nuestro propio trabajo. Al verificar
 el manejo de errores del controller se revirtió `responderError` a una versión
 que filtraba el mensaje crudo de PostgreSQL al cliente, y **ninguna prueba
 falló**: se estaba exigiendo una protección que nadie verificaba. De ahí nació
 `solicitud.controller.errores.test.js`.
+
+La misma verificación se aplicó al frontend y a cada PR del flujo del
+estudiante. Resultados registrados:
+
+| Entrega | Mutantes | Atrapados | El que sobrevivió |
+|---|---:|---:|---|
+| Pantalla de convocatorias y pruebas del frontend (PR #34) | 10 | 10 | — |
+| Flujo del estudiante, frontend (PR #35) | 12 | 12 | — |
+| Reglas de envío y de una solicitud por convocatoria, backend (PR #35) | 7 | 7 | — |
+| Validación de identidad contra RENAP (PR #36) | 12 | 11 | Que el `UPDATE` deje de guardar el CUI |
+
+El único sobreviviente confirma el riesgo de la sección 9: ninguna prueba
+automatizada ejecuta SQL. Ese caso se verificó contra PostgreSQL real.
 
 Se aplicó la misma verificación a cada entrega de este proyecto: 4 mutantes en
 la subida de documentos (SCRUM-42), 5 en convocatorias y 5 en la corrección de
@@ -387,7 +397,7 @@ Las pruebas no producen un documento final único, sino artefactos continuos:
 
 | Artefacto | Dónde vive | Estado |
 |---|---|---|
-| Suite de pruebas automatizadas | `backend/src/__tests__/` | **314 pruebas.** Las 19 del frontend no se acreditan: ver 6.2 |
+| Suite de pruebas automatizadas | `backend/src/__tests__/` y `frontend/src/__tests__/` | **353 + 85 pruebas**, todas contra código de producción |
 | Colección de Postman | `backend/tests/postman/` | Existe |
 | Script de recorrido end-to-end | `scripts/demo-api.sh` | 15 pasos, idempotente, con código de salida |
 | Registro de defectos | Tablero de Jira, proyecto SCRUM, etiqueta Bug | En uso |
@@ -422,8 +432,8 @@ Declarados para que el Product Owner los conozca y pueda priorizarlos:
 | No hay Staging: las condiciones de producción no se prueban | Medio | Variables documentadas en el Manual Técnico |
 | **Ninguna prueba automatizada ejecuta SQL.** Un error de consulta, de nombre de columna o de restricción solo lo atrapa el recorrido manual | Alto | `demo-api.sh` contra PostgreSQL real antes de cada Sprint Review |
 | No se mide cobertura de código | Medio | La verificación por mutación cubre el caso crítico, pero no dice qué quedó sin probar |
-| **El frontend no tiene NINGUNA prueba real.** Las 19 existentes no importan código de producción y no pueden fallar | Alto | Solo pruebas manuales exploratorias. Es la primera tarea de calidad del frontend |
-| `npm audit` reporta 4 vulnerabilidades en el backend: 1 crítica y 3 moderadas | Alto | **Pendiente de atender** |
+| Las pruebas del frontend reemplazan al backend por dobles: no hay recorrido automatizado en navegador | Medio | Recorrido manual en navegador real al revisar cada PR del flujo |
+| `npm audit` reporta 5 vulnerabilidades en el backend: 1 crítica, 2 altas y 2 moderadas | Alto | **Pendiente de atender** |
 
 ---
 

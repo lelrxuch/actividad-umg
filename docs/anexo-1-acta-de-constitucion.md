@@ -80,20 +80,21 @@ incluyendo pruebas unitarias, de integración y de aceptación, revisión de có
 mediante Pull Request, documentación actualizada y trazabilidad completa en el
 repositorio Git.
 
-**Avance verificable:** 314 pruebas en el backend; 26 endpoints; todo integrado
-por Pull Request con aprobación de otro miembro.
+**Avance verificable:** 353 pruebas en el backend y 85 en el frontend, todas
+contra código de producción; 26 endpoints; todo integrado por Pull Request con
+aprobación de otro miembro.
 
 **Lo que NO se cumple de este objetivo, y hay que decirlo:**
 
-1. El punto 7 del DoD exige despliegue en un entorno de pruebas y verificación
+El punto 7 del DoD exige despliegue en un entorno de pruebas y verificación
    del Product Owner. **No existe entorno de Staging**, de modo que ninguna
    Historia ha cumplido el 100 % de la Definición de Hecho. El detalle y las dos
    salidas posibles están en `docs/anexo-6-plan-de-calidad.md` §4.4.
-2. **El frontend no tiene pruebas reales.** Los 2 archivos de prueba que existen
-   no importan código de producción —su único `import` es de `vitest` y cada
-   aserción compara literales escritos dentro de la propia prueba—, así que no
-   pueden fallar. La cobertura del cliente es cero. Detalle en
-   `docs/anexo-6-plan-de-calidad.md` §4.5.
+
+Hasta el 22/10/2026 tampoco se cumplía en el frontend: sus 2 archivos de prueba
+no importaban código de producción y no podían fallar. Se reemplazaron por
+pruebas reales (PR #34 y siguientes); el detalle está en
+`docs/anexo-6-plan-de-calidad.md` §4.5.
 
 ---
 
@@ -156,7 +157,7 @@ lo que se agrega es la verdad sobre su cumplimiento.
 > creado y validado con tipos **UUID**"*. El esquema usa `SERIAL` e `INTEGER`,
 > no UUID: **no hay un solo UUID en el proyecto**. Se decidió no migrar, porque
 > cambiar el tipo de las claves obliga a tocar todas las llaves foráneas, los
-> repositorios y las 314 pruebas, a cambio de un beneficio que este sistema no
+> repositorios y las 353 pruebas del backend, a cambio de un beneficio que este sistema no
 > necesita (los identificadores no se exponen a terceros ni se generan de forma
 > distribuida). **Queda a decisión del Product Owner** si acepta la desviación o
 > exige la migración.
@@ -179,8 +180,8 @@ lo que se agrega es la verdad sobre su cumplimiento.
 |---|---|---|---|---|
 | 3.1 | Lógica de Solicitudes y patrón State | 20/Mar/2026 | Jonatan Santiago | **Entregado.** 5 estados, 27 pruebas |
 | 3.2 | Carga de archivos y patrón Proxy | 25/Mar/2026 | Cristopher Contreras | **Entregado.** Los archivos van a `backend/uploads/`, no a `/storage/uploads` |
-| 3.3 | Adaptador de validaciones (patrón Adapter) | 28/Mar/2026 | José Pereira | **Implementado y probado, pero NO conectado** al flujo de envío |
-| 3.4 | Formulario multipaso de postulación (frontend) | 02/Abr/2026 | Brayan Sujuy | **Pendiente** |
+| 3.3 | Adaptador de validaciones (patrón Adapter) | 28/Mar/2026 | José Pereira | **Entregado y conectado al envío** desde SCRUM-38 (PR #36). El sistema no guardaba el CUI en ninguna tabla: ahora se pide al enviar y queda en `solicitudes.cui` |
+| 3.4 | Formulario multipaso de postulación (frontend) | 02/Abr/2026 | Brayan Sujuy | **Entregado** como pantalla única, no multipaso (PR #34 y #35): convocatorias, expediente con subida de documentos, CUI y envío |
 | 3.5 | Pruebas de integración y mantenibilidad (SOLID) | 06/Abr/2026 | Marco Corado | **Entregado** |
 
 ### Fase 4 — Evaluación, reportes y calidad (Sprint 4)
@@ -199,8 +200,8 @@ lo que se agrega es la verdad sobre su cumplimiento.
 | WBS | Tarea | Fecha | Responsable | Estado real |
 |---|---|---|---|---|
 | 5.1 | Despliegue en entorno de Staging / Pruebas | 28/Abr/2026 | Cristopher Contreras | **No realizado.** Es la causa de que el punto 7 del DoD no se pueda cumplir |
-| 5.2 | Manuales Técnico y de Usuario | 02/May/2026 | Marco Corado / Brayan S. | **Manual Técnico entregado y verificado.** Manual de Usuario pendiente: depende del frontend |
-| 5.3 | Auditoría del repositorio y limpieza de ramas | 05/May/2026 | Cristopher Contreras | **Pendiente.** `main` lleva 48 commits de atraso respecto a `develop` |
+| 5.2 | Manuales Técnico y de Usuario | 02/May/2026 | Marco Corado / Brayan S. | **Entregados.** Manual de Usuario con capturas del flujo del estudiante; la parte de evaluador y administrador queda pendiente hasta que existan sus pantallas |
+| 5.3 | Auditoría del repositorio y limpieza de ramas | 05/May/2026 | Cristopher Contreras | **Pendiente.** `main` lleva 69 commits de atraso respecto a `develop` |
 | 5.4 | Demostración final y defensa | 10/May/2026 | Todo el equipo | Pendiente |
 
 ### 6.1 Nota sobre las fechas
