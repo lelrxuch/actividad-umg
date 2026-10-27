@@ -5,6 +5,8 @@
 //   - Observer       (backend/src/patterns/observer)   → a quién se le avisa del cambio.
 //   - Factory Method (backend/src/patterns/creational) → qué modalidad de beca es y
 //                                                        qué documentación exige.
+//   - Adapter        (vía identidad.service)           → si el CUI con que se envía
+//                                                        existe en RENAP (SCRUM-38).
 //
 // Nótese que no hay un solo `if` ni `switch` sobre el estado ni sobre el tipo de
 // beca en todo el archivo: el service orquesta (carga, delega, persiste) y las
@@ -16,6 +18,8 @@ import { SolicitudFactory } from '../patterns/creational/SolicitudFactory.js';
 import { autorizar, ACCIONES } from './solicitud.autorizacion.js';
 import { exigirConvocatoriaAbierta } from './convocatoria.service.js';
 import { listarDeSolicitud } from '../repositories/documento.repository.js';
+import * as usuarioRepository from '../repositories/usuario.repository.js';
+import { validarIdentidadConNombre } from './identidad.service.js';
 
 function errorDeNegocio(mensaje, status, extra = {}) {
   const error = new Error(mensaje);
@@ -66,6 +70,41 @@ async function exigirExpedienteCompleto(fila) {
       { faltantes }
     );
   }
+}
+
+/**
+ * SCRUM-38: no se envía con una identidad inexistente ni ajena.
+ *
+ * El CUI se pide al enviar porque el sistema no lo guardaba en ningún lado. Se
+ * valida contra RENAP y además se compara el nombre de RENAP con el del dueño
+ * de la solicitud, para que nadie envíe con el CUI de otra persona.
+ *
+ * Es la última comprobación del envío porque es la única que sale a la red.
+ * Sus errores ya traen status: 400 si el CUI está mal o no existe, 503 si RENAP
+ * no respondió. En cualquiera de los dos el estado no cambia y se puede volver
+ * a intentar.
+ *
+ * El mensaje de "no coincide" no dice qué nombre tiene RENAP: sería revelarle
+ * el nombre legal de un CUI a quien lo está probando.
+ *
+ * @returns {Promise<{cui: string}>} El CUI ya normalizado, para registrarlo.
+ */
+async function exigirIdentidad(fila, cui, validador) {
+  const estudiante = await usuarioRepository.findById(fila.estudiante_id);
+  const identidad = await validarIdentidadConNombre(
+    cui,
+    estudiante?.nombre,
+    validador ? { validador } : {}
+  );
+
+  if (!identidad.coincideNombre) {
+    throw errorDeNegocio(
+      `El CUI ${identidad.cui} no corresponde al nombre registrado en su cuenta.`,
+      400
+    );
+  }
+
+  return { cui: identidad.cui };
 }
 
 /**
@@ -120,11 +159,13 @@ async function aplicarTransicion(id, accion, opciones = {}) {
 
   const solicitud = hidratar(fila, opciones);
 
-  // Precondición propia de la acción (hoy: expediente completo para enviar).
-  // Solo corre si el ESTADO admite la acción: reenviar una solicitud ya
-  // enviada tiene que dar 409 por el estado, no 400 por los documentos.
+  // Precondición propia de la acción (hoy: expediente completo e identidad
+  // para enviar). Solo corre si el ESTADO admite la acción: reenviar una
+  // solicitud ya enviada tiene que dar 409 por el estado, no 400 por los
+  // documentos. Lo que devuelva se persiste junto con el estado nuevo.
+  let registro;
   if (opciones.precondicion && solicitud.accionesPermitidas.includes(opciones.accionAutorizada)) {
-    await opciones.precondicion(fila);
+    registro = await opciones.precondicion(fila);
   }
 
   // Aquí ocurre la delegación del patrón State. Si la transición es inválida,
@@ -133,7 +174,11 @@ async function aplicarTransicion(id, accion, opciones = {}) {
 
   // La transición fue aceptada: los observers ya fueron notificados por
   // Solicitud#cambiarEstado. Solo queda persistir el estado nuevo.
-  await solicitudRepository.actualizarEstado(solicitud.id, solicitud.nombreEstado);
+  await solicitudRepository.actualizarEstado(
+    solicitud.id,
+    solicitud.nombreEstado,
+    ...(registro ? [registro] : [])
+  );
 
   return formatoPublico(fila, solicitud);
 }
@@ -235,14 +280,24 @@ export async function obtenerSolicitud(id, usuario) {
 
 /**
  * Borrador → Enviada. Notifica al estudiante.
+ *
+ * El orden de las comprobaciones es deliberado: quién (403), estado (409),
+ * expediente (400) y RENAP al final (400 o 503), que es la llamada externa.
+ *
  * @param {number} id
  * @param {object} [opciones]
+ * @param {string} [opciones.cui] CUI del estudiante, con o sin separadores.
+ * @param {import('../patterns/structural/IValidacionIdentidad.js').IValidacionIdentidad}
+ *   [opciones.validadorIdentidad] Se inyecta en las pruebas; por defecto, RENAP.
  */
-export function enviarSolicitud(id, opciones = {}) {
+export function enviarSolicitud(id, { cui, validadorIdentidad, ...opciones } = {}) {
   return aplicarTransicion(id, (solicitud) => solicitud.enviar(), {
     ...opciones,
     accionAutorizada: ACCIONES.ENVIAR,
-    precondicion: exigirExpedienteCompleto,
+    precondicion: async (fila) => {
+      await exigirExpedienteCompleto(fila);
+      return exigirIdentidad(fila, cui, validadorIdentidad);
+    },
   });
 }
 

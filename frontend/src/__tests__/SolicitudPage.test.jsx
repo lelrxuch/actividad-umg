@@ -26,6 +26,15 @@ function render() {
   );
 }
 
+/** CUI que el simulador de RENAP del backend conoce. */
+const CUI_ANA = '1234567890101';
+
+/** Escribe el CUI y pulsa enviar, como lo haría el estudiante. */
+async function enviarCon(cui) {
+  fireEvent.change(await screen.findByLabelText(/cui/i), { target: { value: cui } });
+  fireEvent.click(screen.getByRole('button', { name: /enviar a evaluación/i }));
+}
+
 function solicitud(extra = {}) {
   return {
     id: 42,
@@ -128,10 +137,10 @@ describe('SolicitudPage', () => {
     enviarSolicitud.mockRejectedValue(incompleto);
 
     render();
-    fireEvent.click(await screen.findByRole('button', { name: /enviar a evaluación/i }));
+    await enviarCon(CUI_ANA);
 
     expect(await screen.findByRole('status')).toHaveTextContent(/expediente está incompleto/i);
-    expect(enviarSolicitud).toHaveBeenCalledWith('42');
+    expect(enviarSolicitud).toHaveBeenCalledWith('42', CUI_ANA);
   });
 
   it('al enviar completo muestra el estado nuevo y deja de ofrecer enviar', async () => {
@@ -140,12 +149,55 @@ describe('SolicitudPage', () => {
     enviarSolicitud.mockResolvedValue(solicitud({ estado: 'Enviada', accionesPermitidas: ['evaluar'] }));
 
     render();
-    fireEvent.click(await screen.findByRole('button', { name: /enviar a evaluación/i }));
+    await enviarCon(CUI_ANA);
 
     expect(await screen.findByText('Enviada')).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: /enviar a evaluación/i })).not.toBeInTheDocument()
     );
+    // Enviada ya no pide CUI.
+    expect(screen.queryByLabelText(/cui/i)).not.toBeInTheDocument();
+  });
+
+  it('sin CUI no deja enviar (SCRUM-38)', async () => {
+    obtenerSolicitud.mockResolvedValue(solicitud());
+    listarDocumentos.mockResolvedValue([]);
+
+    render();
+
+    expect(await screen.findByRole('button', { name: /enviar a evaluación/i })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText(/cui/i), { target: { value: '   ' } });
+    expect(screen.getByRole('button', { name: /enviar a evaluación/i })).toBeDisabled();
+  });
+
+  it('manda el CUI tal como se escribió: el backend lo normaliza y lo valida', async () => {
+    obtenerSolicitud.mockResolvedValue(solicitud());
+    listarDocumentos.mockResolvedValue([]);
+    enviarSolicitud.mockResolvedValue(solicitud({ estado: 'Enviada', accionesPermitidas: ['evaluar'] }));
+
+    render();
+    await enviarCon('1234 56789 0101');
+
+    await waitFor(() => expect(enviarSolicitud).toHaveBeenCalledWith('42', '1234 56789 0101'));
+  });
+
+  it.each([
+    ['un CUI rechazado por RENAP', 'No se pudo validar la identidad del CUI 9999999999999: CIUDADANO NO ENCONTRADO EN EL PADRON'],
+    ['RENAP caído', 'El servicio de RENAP no está disponible: ECONNREFUSED'],
+  ])('%s se muestra como error y deja reintentar', async (_caso, mensaje) => {
+    obtenerSolicitud.mockResolvedValue(solicitud());
+    listarDocumentos.mockResolvedValue([]);
+    enviarSolicitud.mockRejectedValue(new Error(mensaje));
+
+    render();
+    await enviarCon('9999999999999');
+
+    const aviso = await screen.findByRole('status');
+    expect(aviso).toHaveTextContent(mensaje);
+    // Antes solo los faltantes se pintaban de error: esto salía en verde.
+    expect(aviso).toHaveAttribute('data-tipo', 'error');
+    expect(screen.getByRole('button', { name: /enviar a evaluación/i })).toBeEnabled();
+    expect(screen.getByText('Borrador')).toBeInTheDocument();
   });
 
   it('el botón de enviar lo decide accionesPermitidas, no el nombre del estado', async () => {

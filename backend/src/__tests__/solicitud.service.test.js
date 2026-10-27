@@ -21,6 +21,15 @@ vi.mock('../repositories/documento.repository.js', () => ({
   listarDeSolicitud: vi.fn(),
 }));
 
+// Desde SCRUM-38 enviar compara el nombre del dueño con el de RENAP. RENAP no
+// se mockea: el cliente simulado responde en memoria.
+vi.mock('../repositories/usuario.repository.js', () => ({
+  findById: vi.fn(async (id) => ({ id, nombre: 'Ana López' })),
+}));
+
+/** CUI que el simulador de RENAP conoce: ANA MARIA LOPEZ GARCIA. */
+const CUI_ANA = '1234567890101';
+
 /** El estudiante dueño de las filas de prueba. */
 const DUENO = { id: 3, rol: 'estudiante' };
 /** Un evaluador asignado a la solicitud de prueba. */
@@ -65,9 +74,9 @@ describe('solicitud.service — integración de los patrones State y Observer', 
     it('enviarSolicitud persiste el estado Enviada', async () => {
       solicitudRepository.findById.mockResolvedValue(filaEnEstado('Borrador'));
 
-      const resultado = await solicitudService.enviarSolicitud(42, { usuario: DUENO });
+      const resultado = await solicitudService.enviarSolicitud(42, { usuario: DUENO, cui: CUI_ANA });
 
-      expect(solicitudRepository.actualizarEstado).toHaveBeenCalledWith(42, 'Enviada');
+      expect(solicitudRepository.actualizarEstado).toHaveBeenCalledWith(42, 'Enviada', { cui: CUI_ANA });
       expect(resultado.estado).toBe('Enviada');
     });
 

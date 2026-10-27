@@ -62,8 +62,16 @@ describe('solicitudService', () => {
 
   it('enviar incompleto conserva los faltantes', async () => {
     API.post.mockRejectedValue({ response: { status: 400, data: { error: 'Incompleto', faltantes: ['titulo'] } } });
-    await expect(solicitudes.enviarSolicitud(42)).rejects.toMatchObject({ faltantes: ['titulo'] });
-    expect(API.post).toHaveBeenCalledWith('/solicitudes/42/enviar');
+    await expect(solicitudes.enviarSolicitud(42, '1234567890101')).rejects.toMatchObject({ faltantes: ['titulo'] });
+    expect(API.post).toHaveBeenCalledWith('/solicitudes/42/enviar', { cui: '1234567890101' });
+  });
+
+  it('enviar con RENAP caído conserva el 503', async () => {
+    API.post.mockRejectedValue({ response: { status: 503, data: { error: 'El servicio de RENAP no está disponible' } } });
+    await expect(solicitudes.enviarSolicitud(42, '1234567890101')).rejects.toMatchObject({
+      status: 503,
+      message: 'El servicio de RENAP no está disponible',
+    });
   });
 });
 

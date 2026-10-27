@@ -41,11 +41,15 @@ export const obtenerSolicitud = async (id) => {
 /**
  * Envía la solicitud a evaluación.
  *
+ * @param {number|string} id
+ * @param {string} cui CUI del estudiante; el backend lo valida contra RENAP.
  * @throws 400 con `faltantes` si el expediente está incompleto.
+ * @throws 400 si el CUI no existe o no corresponde al nombre de la cuenta.
+ * @throws 503 si RENAP no respondió; se puede reintentar.
  */
-export const enviarSolicitud = async (id) => {
+export const enviarSolicitud = async (id, cui) => {
   try {
-    const respuesta = await API.post(`/solicitudes/${id}/enviar`);
+    const respuesta = await API.post(`/solicitudes/${id}/enviar`, { cui });
     return respuesta.data;
   } catch (error) {
     throw errorDeApi(error, 'No se pudo enviar la solicitud');

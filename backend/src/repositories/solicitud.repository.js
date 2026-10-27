@@ -47,16 +47,22 @@ export async function crear(estudianteId, estado, { tipo = null, convocatoriaId 
 
 /**
  * Persiste el nuevo estado de una solicitud tras una transición válida.
+ *
+ * `cui` se registra en el mismo UPDATE que el estado (SCRUM-38): así no puede
+ * quedar una solicitud Enviada sin el CUI con que se envió. Si no viene, se
+ * conserva el que hubiera.
+ *
  * @param {number} id
  * @param {string} estado Nombre del estado resultante.
+ * @param {{cui?: string}} [registro] Datos validados que acompañan la transición.
  */
-export async function actualizarEstado(id, estado) {
+export async function actualizarEstado(id, estado, { cui = null } = {}) {
   const resultado = await pool.query(
     `UPDATE solicitudes
-     SET estado = $1, actualizado_en = NOW()
+     SET estado = $1, cui = COALESCE($3, cui), actualizado_en = NOW()
      WHERE id = $2
      RETURNING id, estudiante_id, estado, actualizado_en`,
-    [estado, id]
+    [estado, id, cui]
   );
 
   return resultado.rows[0] || null;

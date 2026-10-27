@@ -106,12 +106,14 @@ export async function obtenerPorId(req, res) {
 /**
  * POST /api/solicitudes/:id/enviar
  * Transición: Borrador -> Enviada
+ * Body: { cui } — se valida contra RENAP en el service (SCRUM-38).
  */
 export async function enviar(req, res) {
   try {
     const { id } = req.params;
     const resultado = await solicitudService.enviarSolicitud(Number(id), {
       usuario: solicitante(req),
+      cui: req.body?.cui,
     });
     res.json(resultado);
   } catch (error) {

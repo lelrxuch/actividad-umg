@@ -145,6 +145,7 @@ describe('el id del token se traduce al del dominio', () => {
     // recibiría 403 sobre su propia solicitud.
     expect(solicitudService.enviarSolicitud).toHaveBeenCalledWith(42, {
       usuario: { id: 7, rol: 'estudiante' },
+      cui: undefined,
     });
   });
 

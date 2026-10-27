@@ -13,6 +13,9 @@ import * as documentoRepository from '../repositories/documento.repository.js';
 import * as convocatoriaService from '../services/convocatoria.service.js';
 import * as solicitudService from '../services/solicitud.service.js';
 import * as solicitudController from '../controllers/solicitud.controller.js';
+import * as usuarioRepository from '../repositories/usuario.repository.js';
+import { RenapAdapter } from '../patterns/structural/RenapAdapter.js';
+import { RenapClienteSimulado } from '../patterns/structural/RenapClienteSimulado.js';
 
 vi.mock('../repositories/solicitud.repository.js', () => ({
   findById: vi.fn(),
@@ -31,8 +34,17 @@ vi.mock('../services/convocatoria.service.js', () => ({
   exigirConvocatoriaAbierta: vi.fn(),
 }));
 
+// RENAP no se mockea: el cliente simulado responde en memoria. Lo que se
+// mockea es de dónde sale el nombre del dueño.
+vi.mock('../repositories/usuario.repository.js', () => ({
+  findById: vi.fn(),
+}));
+
 const DUENO = { id: 3, rol: 'estudiante' };
 const OTRO = { id: 9, rol: 'estudiante' };
+/** CUI que el simulador de RENAP conoce: ANA MARIA LOPEZ GARCIA. */
+const CUI_ANA = '1234567890101';
+const EXPEDIENTE_COMPLETO = [{ tipo: 'dni' }, { tipo: 'titulo' }, { tipo: 'carta' }];
 
 function fila(extra = {}) {
   return { id: 42, estudiante_id: 3, estado: 'Borrador', tipo: 'universitaria', convocatoria_id: 1, ...extra };
@@ -43,6 +55,7 @@ beforeEach(() => {
   solicitudRepository.actualizarEstado.mockResolvedValue({});
   documentoRepository.evaluadoresDeSolicitud.mockResolvedValue([]);
   convocatoriaService.exigirConvocatoriaAbierta.mockResolvedValue();
+  usuarioRepository.findById.mockResolvedValue({ id: 3, nombre: 'Ana López' });
 });
 
 describe('SCRUM-39 — no se envía un expediente incompleto', () => {
@@ -70,7 +83,7 @@ describe('SCRUM-39 — no se envía un expediente incompleto', () => {
     solicitudRepository.findById.mockResolvedValue(fila({ tipo: 'nivel-medio' }));
     documentoRepository.listarDeSolicitud.mockResolvedValue([{ tipo: 'dni' }, { tipo: 'carta' }]);
 
-    await expect(solicitudService.enviarSolicitud(42, { usuario: DUENO })).resolves.toMatchObject({
+    await expect(solicitudService.enviarSolicitud(42, { usuario: DUENO, cui: CUI_ANA })).resolves.toMatchObject({
       estado: 'Enviada',
     });
   });
@@ -85,13 +98,11 @@ describe('SCRUM-39 — no se envía un expediente incompleto', () => {
 
   it('con el expediente completo, se envía', async () => {
     solicitudRepository.findById.mockResolvedValue(fila());
-    documentoRepository.listarDeSolicitud.mockResolvedValue([
-      { tipo: 'dni' }, { tipo: 'titulo' }, { tipo: 'carta' },
-    ]);
+    documentoRepository.listarDeSolicitud.mockResolvedValue(EXPEDIENTE_COMPLETO);
 
-    await solicitudService.enviarSolicitud(42, { usuario: DUENO });
+    await solicitudService.enviarSolicitud(42, { usuario: DUENO, cui: CUI_ANA });
 
-    expect(solicitudRepository.actualizarEstado).toHaveBeenCalledWith(42, 'Enviada');
+    expect(solicitudRepository.actualizarEstado).toHaveBeenCalledWith(42, 'Enviada', { cui: CUI_ANA });
   });
 
   it('una solicitud sin modalidad no se puede enviar: no hay contra qué validar', async () => {
@@ -124,6 +135,87 @@ describe('SCRUM-39 — no se envía un expediente incompleto', () => {
       status: 403,
     });
     expect(documentoRepository.listarDeSolicitud).not.toHaveBeenCalled();
+  });
+});
+
+describe('SCRUM-38 — se envía con un CUI que existe en RENAP y es del dueño', () => {
+  beforeEach(() => {
+    solicitudRepository.findById.mockResolvedValue(fila());
+    documentoRepository.listarDeSolicitud.mockResolvedValue(EXPEDIENTE_COMPLETO);
+  });
+
+  /** Un RENAP que no contesta, y que avisa si alguien lo consultó. */
+  function renapCaido() {
+    const cliente = new RenapClienteSimulado({ fallaCon: new Error('ECONNREFUSED') });
+    vi.spyOn(cliente, 'consultarCiudadano');
+    return { cliente, validadorIdentidad: new RenapAdapter({ cliente }) };
+  }
+
+  it('registra el CUI ya normalizado, en el mismo UPDATE que el estado', async () => {
+    await solicitudService.enviarSolicitud(42, { usuario: DUENO, cui: '1234 56789 0101' });
+
+    expect(solicitudRepository.actualizarEstado).toHaveBeenCalledWith(42, 'Enviada', { cui: CUI_ANA });
+  });
+
+  it('el nombre del dueño se compara con el de RENAP sin exigir el nombre completo', async () => {
+    // RENAP: "ANA MARIA LOPEZ GARCIA". Registrada como "Ana López".
+    await expect(
+      solicitudService.enviarSolicitud(42, { usuario: DUENO, cui: CUI_ANA })
+    ).resolves.toMatchObject({ estado: 'Enviada' });
+    expect(usuarioRepository.findById).toHaveBeenCalledWith(3);
+  });
+
+  it.each([
+    ['sin CUI', undefined],
+    ['con un CUI mal escrito', '12345'],
+    ['con un CUI que RENAP no conoce', '9999999999999'],
+  ])('%s: 400 y no cambia el estado', async (_caso, cui) => {
+    await expect(solicitudService.enviarSolicitud(42, { usuario: DUENO, cui })).rejects.toMatchObject({
+      status: 400,
+    });
+    expect(solicitudRepository.actualizarEstado).not.toHaveBeenCalled();
+  });
+
+  it('con el CUI de otra persona: 400, sin revelar el nombre que tiene RENAP', async () => {
+    // 2345678901202 es CARLOS PEREZ; la dueña es Ana López.
+    const error = await solicitudService
+      .enviarSolicitud(42, { usuario: DUENO, cui: '2345678901202' })
+      .catch((e) => e);
+
+    expect(error).toMatchObject({ status: 400 });
+    expect(error.message).not.toMatch(/carlos|perez/i);
+    expect(solicitudRepository.actualizarEstado).not.toHaveBeenCalled();
+  });
+
+  it('si RENAP no responde: 503, no cambia el estado y se puede reintentar', async () => {
+    const { validadorIdentidad } = renapCaido();
+
+    await expect(
+      solicitudService.enviarSolicitud(42, { usuario: DUENO, cui: CUI_ANA, validadorIdentidad })
+    ).rejects.toMatchObject({ status: 503 });
+    expect(solicitudRepository.actualizarEstado).not.toHaveBeenCalled();
+
+    // Sigue en Borrador: el reintento, con RENAP de vuelta, pasa.
+    await expect(
+      solicitudService.enviarSolicitud(42, { usuario: DUENO, cui: CUI_ANA })
+    ).resolves.toMatchObject({ estado: 'Enviada' });
+  });
+
+  describe('RENAP va al final: no se consulta si otra regla ya rechazó', () => {
+    it.each([
+      ['un tercero (403)', { usuario: OTRO }, fila(), 403],
+      ['una ya enviada (409)', { usuario: DUENO }, fila({ estado: 'Enviada' }), 409],
+      ['un expediente incompleto (400)', { usuario: DUENO }, fila(), 400, [{ tipo: 'dni' }]],
+    ])('%s', async (_caso, opciones, filaDeBase, status, documentos = EXPEDIENTE_COMPLETO) => {
+      solicitudRepository.findById.mockResolvedValue(filaDeBase);
+      documentoRepository.listarDeSolicitud.mockResolvedValue(documentos);
+      const { cliente, validadorIdentidad } = renapCaido();
+
+      await expect(
+        solicitudService.enviarSolicitud(42, { ...opciones, cui: CUI_ANA, validadorIdentidad })
+      ).rejects.toMatchObject({ status });
+      expect(cliente.consultarCiudadano).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -219,11 +311,9 @@ describe('una sola forma de la solicitud en todas las respuestas', () => {
 
   it('una transición devuelve también la forma completa', async () => {
     solicitudRepository.findById.mockResolvedValue(fila());
-    documentoRepository.listarDeSolicitud.mockResolvedValue([
-      { tipo: 'dni' }, { tipo: 'titulo' }, { tipo: 'carta' },
-    ]);
+    documentoRepository.listarDeSolicitud.mockResolvedValue(EXPEDIENTE_COMPLETO);
 
-    const enviada = await solicitudService.enviarSolicitud(42, { usuario: DUENO });
+    const enviada = await solicitudService.enviarSolicitud(42, { usuario: DUENO, cui: CUI_ANA });
 
     expect(enviada).toMatchObject({ estado: 'Enviada', tipo: 'universitaria', convocatoriaId: 1 });
   });
@@ -248,6 +338,34 @@ describe('controller — el contrato de error lleva lo que el cliente necesita',
 
     expect(res.statusCode).toBe(400);
     expect(res.cuerpo.faltantes).toEqual(['titulo', 'carta']);
+  });
+
+  it('enviar toma el CUI del cuerpo de la petición', async () => {
+    solicitudRepository.findById.mockResolvedValue(fila());
+    documentoRepository.listarDeSolicitud.mockResolvedValue(EXPEDIENTE_COMPLETO);
+    const res = resFalso();
+
+    await solicitudController.enviar(
+      { params: { id: '42' }, body: { cui: CUI_ANA }, usuario: { sub: 3, rol: 'estudiante' } },
+      res
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.cuerpo.estado).toBe('Enviada');
+  });
+
+  it('enviar con un CUI desconocido responde 400 con el motivo', async () => {
+    solicitudRepository.findById.mockResolvedValue(fila());
+    documentoRepository.listarDeSolicitud.mockResolvedValue(EXPEDIENTE_COMPLETO);
+    const res = resFalso();
+
+    await solicitudController.enviar(
+      { params: { id: '42' }, body: { cui: '9999999999999' }, usuario: { sub: 3, rol: 'estudiante' } },
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.cuerpo.error).toMatch(/no encontrado/i);
   });
 
   it('crear duplicada responde 409 con la solicitud existente', async () => {
