@@ -116,6 +116,24 @@ export async function obtenerPorId(req, res) {
 }
 
 /**
+ * POST /api/solicitudes/:id/evaluadores
+ * Administrador asigna un evaluador. Body: { evaluadorId }
+ */
+export async function asignarEvaluador(req, res) {
+  try {
+    const { id } = req.params;
+    const resultado = await solicitudService.asignarEvaluador(
+      Number(id),
+      req.body?.evaluadorId,
+      solicitante(req)
+    );
+    res.status(201).json(resultado);
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
+/**
  * POST /api/solicitudes/:id/enviar
  * Transición: Borrador -> Enviada
  * Body: { cui } — se valida contra RENAP en el service (SCRUM-38).

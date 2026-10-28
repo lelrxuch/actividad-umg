@@ -19,6 +19,10 @@ export class EstadoEnviada extends IEstadoSolicitud {
     return ['evaluar'];
   }
 
+  get admiteEvaluadores() {
+    return true;
+  }
+
   /**
    * Transición válida: Enviada → En Evaluación.
    * @param {import('./Solicitud.js').Solicitud} solicitud

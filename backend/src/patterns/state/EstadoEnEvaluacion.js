@@ -19,6 +19,10 @@ export class EstadoEnEvaluacion extends IEstadoSolicitud {
     return ['dictaminar'];
   }
 
+  get admiteEvaluadores() {
+    return true;
+  }
+
   /**
    * Transición válida: En Evaluación → Aprobada | Rechazada.
    * @param {import('./Solicitud.js').Solicitud} solicitud

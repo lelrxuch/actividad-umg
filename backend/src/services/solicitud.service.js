@@ -15,7 +15,13 @@ import * as solicitudRepository from '../repositories/solicitud.repository.js';
 import { Solicitud, crearEstadoDesdeNombre } from '../patterns/state/index.js';
 import { EmailNotificationListener } from '../patterns/observer/EmailNotificationListener.js';
 import { SolicitudFactory } from '../patterns/creational/SolicitudFactory.js';
-import { autorizar, ACCIONES, bandejaDe, BANDEJA } from './solicitud.autorizacion.js';
+import {
+  autorizar,
+  ACCIONES,
+  bandejaDe,
+  BANDEJA,
+  exigirAdministrador,
+} from './solicitud.autorizacion.js';
 import { exigirConvocatoriaAbierta } from './convocatoria.service.js';
 import { listarDeSolicitud } from '../repositories/documento.repository.js';
 import * as usuarioRepository from '../repositories/usuario.repository.js';
@@ -289,6 +295,65 @@ export async function listarAsignadas(usuario) {
       : await solicitudRepository.listarEnRevision();
 
   return filas.map((fila) => formatoPublico(fila));
+}
+
+/**
+ * Asigna un evaluador a una solicitud. Es lo que llena la bandeja de
+ * {@link listarAsignadas} y lo que consulta la autorización para dejarlo
+ * evaluar, dictaminar y ver el expediente.
+ *
+ * El orden de las comprobaciones es deliberado: quién (403), qué se pidió
+ * (400), si la solicitud existe (404), si el usuario es evaluador (400), si el
+ * estado admite evaluadores (409) y, al final, si ya estaba asignado (409),
+ * que es lo único que escribe.
+ *
+ * Solo Enviada y En Evaluación admiten evaluadores; lo decide el estado
+ * (IEstadoSolicitud#admiteEvaluadores), no este service.
+ *
+ * @param {number} solicitudId
+ * @param {*} evaluadorId Id del usuario a asignar, tal como llegó en el body.
+ * @param {{id: *, rol: string}} usuario Quien pide la asignación.
+ * @returns {Promise<{solicitudId: number, evaluador: {id: number, nombre: string, email: string}}>}
+ */
+export async function asignarEvaluador(solicitudId, evaluadorId, usuario) {
+  exigirAdministrador(usuario);
+
+  const idEvaluador = Number(evaluadorId);
+  if (!Number.isInteger(idEvaluador) || idEvaluador <= 0) {
+    throw errorDeNegocio('El campo "evaluadorId" es requerido y debe ser un id de usuario.', 400);
+  }
+
+  const fila = await solicitudRepository.findById(solicitudId);
+  if (!fila) {
+    throw errorDeNegocio(`No existe la solicitud ${solicitudId}.`, 404);
+  }
+
+  // Un id que no existe responde lo mismo que uno de otro rol: en los dos
+  // casos lo que falla es el body, no la ruta.
+  const evaluador = await usuarioRepository.findById(idEvaluador);
+  if (!evaluador || evaluador.rol !== 'evaluador') {
+    throw errorDeNegocio(`El usuario ${idEvaluador} no es evaluador.`, 400);
+  }
+
+  if (!crearEstadoDesdeNombre(fila.estado).admiteEvaluadores) {
+    throw errorDeNegocio(
+      `No se asignan evaluadores a una solicitud en estado ${fila.estado}: solo en Enviada o En Evaluación.`,
+      409
+    );
+  }
+
+  const asignado = await solicitudRepository.asignarEvaluador(fila.id, evaluador.id);
+  if (!asignado) {
+    throw errorDeNegocio(
+      `El usuario ${evaluador.id} ya está asignado como evaluador de la solicitud ${fila.id}.`,
+      409
+    );
+  }
+
+  return {
+    solicitudId: fila.id,
+    evaluador: { id: evaluador.id, nombre: evaluador.nombre, email: evaluador.email },
+  };
 }
 
 /**

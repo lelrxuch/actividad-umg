@@ -105,6 +105,30 @@ export async function listarAsignadasA(evaluadorId) {
 }
 
 /**
+ * Asigna un evaluador a una solicitud.
+ *
+ * ON CONFLICT DO NOTHING sobre la llave primaria (solicitud_id, evaluador_id):
+ * si ya estaba asignado no se inserta nada y RETURNING no trae filas. Así el
+ * "ya asignado" se decide en la misma sentencia, sin una consulta previa que
+ * dos peticiones simultáneas podrían pasar las dos.
+ *
+ * @param {number} solicitudId
+ * @param {number} evaluadorId
+ * @returns {Promise<boolean>} true si se asignó, false si ya lo estaba.
+ */
+export async function asignarEvaluador(solicitudId, evaluadorId) {
+  const resultado = await pool.query(
+    `INSERT INTO solicitud_evaluadores (solicitud_id, evaluador_id)
+     VALUES ($1, $2)
+     ON CONFLICT DO NOTHING
+     RETURNING solicitud_id`,
+    [solicitudId, evaluadorId]
+  );
+
+  return resultado.rowCount > 0;
+}
+
+/**
  * Todas las solicitudes que esperan revisión (Enviada o En Evaluación), de la
  * más vieja a la más nueva. Es la bandeja del administrador.
  * @returns {Promise<Array<object>>} Filas con las columnas de COLUMNAS.
