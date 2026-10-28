@@ -53,22 +53,25 @@ describe('Adapter — RenapAdapter (SCRUM-31)', () => {
   ])('rechaza el CUI %j porque es %s', async (cui) => {
     const cliente = new RenapClienteSimulado();
 
-    await expect(new RenapAdapter({ cliente }).validarCUI(cui)).rejects.toBeInstanceOf(
-      IdentidadNoValidaError
-    );
+    await expect(new RenapAdapter({ cliente }).validarCUI(cui)).rejects.toMatchObject({
+      name: 'IdentidadNoValidaError',
+      // Marca el rechazo por formato: es el único que se le puede mostrar tal cual.
+      formatoInvalido: true,
+    });
 
     // Un CUI mal formado no debe gastar una llamada al servicio externo.
     expect(cliente.consultas).toEqual([]);
   });
 
   it('convierte el "no encontrado" de RENAP (código 04) en un error 400', async () => {
-    expect.assertions(3);
+    expect.assertions(4);
     try {
       await new RenapAdapter().validarCUI('9999999999999');
     } catch (error) {
       expect(error).toBeInstanceOf(IdentidadNoValidaError);
       expect(error.status).toBe(400);
       expect(error.motivo).toBe('CIUDADANO NO ENCONTRADO EN EL PADRON');
+      expect(error.formatoInvalido).toBe(false);
     }
   });
 

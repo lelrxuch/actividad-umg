@@ -12,14 +12,19 @@
 export class IdentidadNoValidaError extends Error {
   /**
    * @param {string} cui CUI consultado.
-   * @param {string} motivo Explicación apta para mostrarle al estudiante.
+   * @param {string} motivo Explicación del rechazo.
+   * @param {object} [opciones]
+   * @param {boolean} [opciones.formatoInvalido] true si se rechazó por formato,
+   *   sin consultar el registro. Ese rechazo no revela nada y se le puede
+   *   mostrar tal cual al estudiante; los demás no (ver solicitud.service).
    */
-  constructor(cui, motivo) {
+  constructor(cui, motivo, { formatoInvalido = false } = {}) {
     super(`No se pudo validar la identidad del CUI ${cui}: ${motivo}`);
 
     this.name = 'IdentidadNoValidaError';
     this.cui = cui;
     this.motivo = motivo;
+    this.formatoInvalido = formatoInvalido;
     this.status = 400;
   }
 }

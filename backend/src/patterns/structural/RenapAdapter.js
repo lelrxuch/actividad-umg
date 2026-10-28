@@ -91,7 +91,8 @@ export class RenapAdapter extends IValidacionIdentidad {
     if (!new RegExp(`^\\d{${LARGO_CUI}}$`).test(numeroDocumento)) {
       throw new IdentidadNoValidaError(
         numeroDocumento || String(cui ?? ''),
-        `el CUI debe tener exactamente ${LARGO_CUI} dígitos`
+        `el CUI debe tener exactamente ${LARGO_CUI} dígitos`,
+        { formatoInvalido: true }
       );
     }
 

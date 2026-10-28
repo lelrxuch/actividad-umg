@@ -20,6 +20,14 @@ import { exigirConvocatoriaAbierta } from './convocatoria.service.js';
 import { listarDeSolicitud } from '../repositories/documento.repository.js';
 import * as usuarioRepository from '../repositories/usuario.repository.js';
 import { validarIdentidadConNombre } from './identidad.service.js';
+import { IdentidadNoValidaError } from '../patterns/structural/ErroresIdentidad.js';
+
+/**
+ * Único mensaje para un CUI que no existe en RENAP o que no es del dueño de la
+ * solicitud (ver exigirIdentidad).
+ */
+export const MENSAJE_IDENTIDAD_NO_VERIFICADA =
+  'No se pudo verificar su identidad con el CUI ingresado. Revise que sea el de su DPI y que coincida con el nombre de su cuenta.';
 
 function errorDeNegocio(mensaje, status, extra = {}) {
   const error = new Error(mensaje);
@@ -84,24 +92,30 @@ async function exigirExpedienteCompleto(fila) {
  * no respondió. En cualquiera de los dos el estado no cambia y se puede volver
  * a intentar.
  *
- * El mensaje de "no coincide" no dice qué nombre tiene RENAP: sería revelarle
- * el nombre legal de un CUI a quien lo está probando.
+ * "El CUI no existe" y "el CUI es de otra persona" responden el MISMO mensaje
+ * ({@link MENSAJE_IDENTIDAD_NO_VERIFICADA}). Con dos mensajes distintos, quien
+ * prueba CUIs ajenos sabría cuáles existen en RENAP, y el de "no coincide"
+ * confirmaría que el CUI es de alguien real. Solo el error de formato se
+ * muestra tal cual: no consulta el registro, así que no revela nada, y le dice
+ * al estudiante qué corregir.
  *
  * @returns {Promise<{cui: string}>} El CUI ya normalizado, para registrarlo.
  */
 async function exigirIdentidad(fila, cui, validador) {
   const estudiante = await usuarioRepository.findById(fila.estudiante_id);
-  const identidad = await validarIdentidadConNombre(
-    cui,
-    estudiante?.nombre,
-    validador ? { validador } : {}
-  );
+
+  let identidad;
+  try {
+    identidad = await validarIdentidadConNombre(cui, estudiante?.nombre, validador ? { validador } : {});
+  } catch (error) {
+    if (error instanceof IdentidadNoValidaError && !error.formatoInvalido) {
+      throw errorDeNegocio(MENSAJE_IDENTIDAD_NO_VERIFICADA, 400);
+    }
+    throw error;
+  }
 
   if (!identidad.coincideNombre) {
-    throw errorDeNegocio(
-      `El CUI ${identidad.cui} no corresponde al nombre registrado en su cuenta.`,
-      400
-    );
+    throw errorDeNegocio(MENSAJE_IDENTIDAD_NO_VERIFICADA, 400);
   }
 
   return { cui: identidad.cui };
