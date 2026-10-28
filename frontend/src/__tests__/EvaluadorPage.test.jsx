@@ -15,9 +15,9 @@ describe('EvaluadorPage', () => {
     vi.spyOn(sesion, 'haySesion').mockReturnValue(true);
   });
 
-  it('renderiza el título y la lista de solicitudes enviadas', async () => {
-    solicitudService.listarMisSolicitudes.mockResolvedValue([
-      { id: 1, estado: 'Enviada', tipo: 'pregrado', estudiante_id: 10 },
+  it('renderiza el título y la lista de solicitudes asignadas', async () => {
+    solicitudService.listarAsignadas.mockResolvedValue([
+      { id: 1, estado: 'Enviada', tipo: 'pregrado', estudiante_id: 10, accionesPermitidas: ['evaluar'] },
     ]);
 
     render(
@@ -34,8 +34,8 @@ describe('EvaluadorPage', () => {
   });
 
   it('permite pasar una solicitud a "En Evaluación"', async () => {
-    solicitudService.listarMisSolicitudes.mockResolvedValue([
-      { id: 1, estado: 'Enviada', tipo: 'pregrado', estudiante_id: 10 },
+    solicitudService.listarAsignadas.mockResolvedValue([
+      { id: 1, estado: 'Enviada', tipo: 'pregrado', estudiante_id: 10, accionesPermitidas: ['evaluar'] },
     ]);
     solicitudService.evaluarSolicitud.mockResolvedValue({ id: 1, estado: 'En Evaluación' });
 
@@ -54,8 +54,8 @@ describe('EvaluadorPage', () => {
   });
 
   it('permite dictaminar una solicitud como Aprobada', async () => {
-    solicitudService.listarMisSolicitudes.mockResolvedValue([
-      { id: 2, estado: 'En Evaluación', tipo: 'pregrado', estudiante_id: 12 },
+    solicitudService.listarAsignadas.mockResolvedValue([
+      { id: 2, estado: 'En Evaluación', tipo: 'pregrado', estudiante_id: 12, accionesPermitidas: ['dictaminar'] },
     ]);
     solicitudService.dictaminarSolicitud.mockResolvedValue({ id: 2, estado: 'Aprobada' });
 

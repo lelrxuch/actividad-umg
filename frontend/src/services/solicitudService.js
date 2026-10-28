@@ -85,3 +85,16 @@ export const dictaminarSolicitud = async (id, aprobado, observaciones = '') => {
     throw errorDeApi(error, 'No se pudo dictaminar la solicitud');
   }
 };
+
+/**
+ * Las solicitudes asignadas al evaluador o todas si es administrador.
+ * GET /api/solicitudes/asignadas
+ */
+export const listarAsignadas = async () => {
+  try {
+    const respuesta = await API.get('/solicitudes/asignadas');
+    return Array.isArray(respuesta.data) ? respuesta.data : [];
+  } catch (error) {
+    throw errorDeApi(error, 'No se pudieron cargar las solicitudes asignadas');
+  }
+};

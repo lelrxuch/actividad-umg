@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import {
-  listarMisSolicitudes,
+  listarAsignadas,
   evaluarSolicitud,
   dictaminarSolicitud,
 } from '../services/solicitudService';
@@ -17,21 +17,31 @@ export const EvaluadorPage = () => {
   const [procesandoId, setProcesandoId] = useState(null);
   const [aviso, setAviso] = useState('');
 
-  const cargarSolicitudes = async () => {
-    setCargando(true);
-    setError('');
+  const recargarLista = async () => {
     try {
-      const data = await listarMisSolicitudes();
+      const data = await listarAsignadas();
       setSolicitudes(data);
     } catch (e) {
       setError(e.message);
-    } finally {
-      setCargando(false);
     }
   };
 
   useEffect(() => {
-    cargarSolicitudes();
+    let vigente = true;
+    listarAsignadas()
+      .then((data) => {
+        if (vigente) setSolicitudes(data);
+      })
+      .catch((e) => {
+        if (vigente) setError(e.message);
+      })
+      .finally(() => {
+        if (vigente) setCargando(false);
+      });
+
+    return () => {
+      vigente = false;
+    };
   }, []);
 
   if (!haySesion()) return <Navigate to="/login" replace />;
@@ -43,7 +53,7 @@ export const EvaluadorPage = () => {
     try {
       await evaluarSolicitud(id);
       setAviso(`Solicitud #${id} pasada a "En Evaluación".`);
-      await cargarSolicitudes();
+      await recargarLista();
     } catch (e) {
       setError(e.message);
     } finally {
@@ -58,7 +68,7 @@ export const EvaluadorPage = () => {
     try {
       await dictaminarSolicitud(id, aprobado);
       setAviso(`Solicitud #${id} dictaminada como ${aprobado ? 'APROBADA' : 'RECHAZADA'}.`);
-      await cargarSolicitudes();
+      await recargarLista();
     } catch (e) {
       setError(e.message);
     } finally {
@@ -79,62 +89,68 @@ export const EvaluadorPage = () => {
       {cargando ? (
         <p style={styles.cargando}>Cargando solicitudes...</p>
       ) : solicitudes.length === 0 ? (
-        <p style={styles.vacio}>No hay solicitudes registradas para evaluar.</p>
+        <p style={styles.vacio}>No hay solicitudes asignadas para evaluar.</p>
       ) : (
         <div style={styles.grid}>
-          {solicitudes.map((sol) => (
-            <div key={sol.id} style={styles.tarjeta}>
-              <div style={styles.tarjetaHeader}>
-                <span style={styles.solicitudId}>Solicitud #{sol.id}</span>
-                <span style={styles.estado} data-estado={sol.estado}>{sol.estado}</span>
-              </div>
+          {solicitudes.map((sol) => {
+            const acciones = sol.accionesPermitidas ?? [];
+            const puedeEvaluar = acciones.includes('evaluar');
+            const puedeDictaminar = acciones.includes('dictaminar');
 
-              <p style={styles.detalleText}>
-                <strong>Modalidad:</strong> {nombreModalidad(sol.tipo || 'Beca')}
-              </p>
-              <p style={styles.detalleText}>
-                <strong>Estudiante ID:</strong> {sol.estudiante_id || sol.estudiante}
-              </p>
+            return (
+              <div key={sol.id} style={styles.tarjeta}>
+                <div style={styles.tarjetaHeader}>
+                  <span style={styles.solicitudId}>Solicitud #{sol.id}</span>
+                  <span style={styles.estado} data-estado={sol.estado}>{sol.estado}</span>
+                </div>
 
-              <div style={styles.acciones}>
-                {sol.estado === 'Enviada' && (
-                  <button
-                    type="button"
-                    style={styles.botonEvaluar}
-                    disabled={procesandoId === sol.id}
-                    onClick={() => handleEvaluar(sol.id)}
-                  >
-                    {procesandoId === sol.id ? 'Procesando...' : 'Iniciar Evaluación'}
-                  </button>
-                )}
+                <p style={styles.detalleText}>
+                  <strong>Modalidad:</strong> {nombreModalidad(sol.tipo || 'Beca')}
+                </p>
+                <p style={styles.detalleText}>
+                  <strong>Estudiante ID:</strong> {sol.estudiante_id || sol.estudiante}
+                </p>
 
-                {sol.estado === 'En Evaluación' && (
-                  <div style={styles.grupoDictamen}>
+                <div style={styles.acciones}>
+                  {puedeEvaluar && (
                     <button
                       type="button"
-                      style={styles.botonAprobar}
+                      style={styles.botonEvaluar}
                       disabled={procesandoId === sol.id}
-                      onClick={() => handleDictaminar(sol.id, true)}
+                      onClick={() => handleEvaluar(sol.id)}
                     >
-                      Aprobar
+                      {procesandoId === sol.id ? 'Procesando...' : 'Iniciar Evaluación'}
                     </button>
-                    <button
-                      type="button"
-                      style={styles.botonRechazar}
-                      disabled={procesandoId === sol.id}
-                      onClick={() => handleDictaminar(sol.id, false)}
-                    >
-                      Rechazar
-                    </button>
-                  </div>
-                )}
+                  )}
 
-                {['Borrador', 'Aprobada', 'Rechazada'].includes(sol.estado) && (
-                  <span style={styles.textoSinAccion}>Sin acciones pendientes</span>
-                )}
+                  {puedeDictaminar && (
+                    <div style={styles.grupoDictamen}>
+                      <button
+                        type="button"
+                        style={styles.botonAprobar}
+                        disabled={procesandoId === sol.id}
+                        onClick={() => handleDictaminar(sol.id, true)}
+                      >
+                        Aprobar
+                      </button>
+                      <button
+                        type="button"
+                        style={styles.botonRechazar}
+                        disabled={procesandoId === sol.id}
+                        onClick={() => handleDictaminar(sol.id, false)}
+                      >
+                        Rechazar
+                      </button>
+                    </div>
+                  )}
+
+                  {!puedeEvaluar && !puedeDictaminar && (
+                    <span style={styles.textoSinAccion}>Sin acciones pendientes</span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>
