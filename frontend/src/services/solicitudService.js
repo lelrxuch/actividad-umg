@@ -55,3 +55,33 @@ export const enviarSolicitud = async (id, cui) => {
     throw errorDeApi(error, 'No se pudo enviar la solicitud');
   }
 };
+
+/**
+ * Pasa una solicitud de estado 'Enviada' a 'En Evaluación'.
+ *
+ * @param {number|string} id
+ */
+export const evaluarSolicitud = async (id) => {
+  try {
+    const respuesta = await API.post(`/solicitudes/${id}/evaluar`);
+    return respuesta.data;
+  } catch (error) {
+    throw errorDeApi(error, 'No se pudo pasar la solicitud a evaluación');
+  }
+};
+
+/**
+ * Dictamina una solicitud en estado 'En Evaluación' como Aprobada o Rechazada.
+ *
+ * @param {number|string} id
+ * @param {boolean} aprobado
+ * @param {string} [observaciones]
+ */
+export const dictaminarSolicitud = async (id, aprobado, observaciones = '') => {
+  try {
+    const respuesta = await API.post(`/solicitudes/${id}/dictamen`, { aprobado, observaciones });
+    return respuesta.data;
+  } catch (error) {
+    throw errorDeApi(error, 'No se pudo dictaminar la solicitud');
+  }
+};
