@@ -33,6 +33,17 @@ comparar() {
 
 codigo() { curl -s -o /dev/null -w "%{http_code}" "$@"; }
 
+# en_bandeja "descripción" <si|no> <token>: ¿aparece $ID_SOL en GET /asignadas?
+# Se busca `"id":N,` y no `N` a secas, para que 12 no coincida con 123.
+en_bandeja() {
+  local cuerpo
+  cuerpo=$(curl -s "$API/api/solicitudes/asignadas" -H "Authorization: Bearer $3")
+  case "$cuerpo" in
+    *"\"id\":$ID_SOL,"*) comparar "$1" "$2" "si" ;;
+    *)                   comparar "$1" "$2" "no" ;;
+  esac
+}
+
 registrar() {   # registrar <correo> <rol-en-la-base|vacio>
   curl -s -X POST "$API/api/auth/register" -H "Content-Type: application/json" \
     -d "{\"nombre\":\"$1\",\"email\":\"$2\",\"password\":\"$CLAVE\"}" >/dev/null
@@ -167,7 +178,10 @@ else
     $PSQL -q -c "INSERT INTO solicitud_evaluadores (solicitud_id, evaluador_id)
                  SELECT $ID_SOL, id FROM usuarios WHERE email='$EV_SI'
                  ON CONFLICT DO NOTHING" 2>/dev/null
-    TK_EV_SI=$(token "$EV_SI"); TK_EV_NO=$(token "$EV_NO")
+    ADMIN="admin.$SUFIJO@mineduc.gob.gt"
+    registrar "Administradora Demo" "$ADMIN"
+    $PSQL -q -c "UPDATE usuarios SET rol='administrador' WHERE email='$ADMIN'" 2>/dev/null
+    TK_EV_SI=$(token "$EV_SI"); TK_EV_NO=$(token "$EV_NO"); TK_ADMIN=$(token "$ADMIN")
     comparar "evaluador ASIGNADO descarga" "200" "$(codigo "$API/api/documentos/$ID_DOC/descargar" -H "Authorization: Bearer $TK_EV_SI")"
     comparar "evaluador AJENO descarga"    "403" "$(codigo "$API/api/documentos/$ID_DOC/descargar" -H "Authorization: Bearer $TK_EV_NO")"
   else
@@ -200,6 +214,11 @@ else
     echo "   Ahora el ciclo en orden: Borrador → Enviada → En Evaluación → Aprobada"
     comparar "el dueño envía con su CUI" "200" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/enviar" \
       -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_DUENO" -d "{\"cui\":\"$CUI_ANA\"}")"
+    echo "   Bandeja de revisión (GET /api/solicitudes/asignadas), con la solicitud ya Enviada:"
+    en_bandeja "el evaluador ASIGNADO la ve en su bandeja" "si" "$TK_EV_SI"
+    en_bandeja "el evaluador AJENO no la ve"               "no" "$TK_EV_NO"
+    en_bandeja "la administradora la ve (está Enviada)"   "si" "$TK_ADMIN"
+    comparar "el estudiante no tiene bandeja" "403" "$(codigo "$API/api/solicitudes/asignadas" -H "Authorization: Bearer $TK_DUENO")"
     comparar "el evaluador pasa a evaluar" "200" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/evaluar" -H "Authorization: Bearer $TK_EV_SI")"
     comparar "el evaluador dictamina"    "200" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/dictamen" \
       -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_EV_SI" -d '{"aprobado":true}')"

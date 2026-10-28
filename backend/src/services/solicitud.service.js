@@ -15,7 +15,7 @@ import * as solicitudRepository from '../repositories/solicitud.repository.js';
 import { Solicitud, crearEstadoDesdeNombre } from '../patterns/state/index.js';
 import { EmailNotificationListener } from '../patterns/observer/EmailNotificationListener.js';
 import { SolicitudFactory } from '../patterns/creational/SolicitudFactory.js';
-import { autorizar, ACCIONES } from './solicitud.autorizacion.js';
+import { autorizar, ACCIONES, bandejaDe, BANDEJA } from './solicitud.autorizacion.js';
 import { exigirConvocatoriaAbierta } from './convocatoria.service.js';
 import { listarDeSolicitud } from '../repositories/documento.repository.js';
 import * as usuarioRepository from '../repositories/usuario.repository.js';
@@ -270,6 +270,24 @@ export async function listarMisSolicitudes(usuario) {
   }
 
   const filas = await solicitudRepository.listarPorEstudiante(usuario.id);
+  return filas.map((fila) => formatoPublico(fila));
+}
+
+/**
+ * La bandeja de revisión: lo que un evaluador tiene asignado, o lo que espera
+ * revisión si pregunta un administrador. De la más vieja a la más nueva, en el
+ * mismo formato que el detalle.
+ *
+ * @param {{id: *, rol: string}} usuario
+ * @returns {Promise<object[]>}
+ * @throws {Error & { status: number }} 403 a un estudiante o sin usuario.
+ */
+export async function listarAsignadas(usuario) {
+  const filas =
+    bandejaDe(usuario) === BANDEJA.ASIGNADAS
+      ? await solicitudRepository.listarAsignadasA(usuario.id)
+      : await solicitudRepository.listarEnRevision();
+
   return filas.map((fila) => formatoPublico(fila));
 }
 

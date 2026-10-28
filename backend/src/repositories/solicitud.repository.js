@@ -83,6 +83,43 @@ export async function listarPorEstudiante(estudianteId) {
   return resultado.rows;
 }
 /**
+ * Las solicitudes asignadas a un evaluador en solicitud_evaluadores, en
+ * cualquier estado, de la más vieja a la más nueva.
+ *
+ * Las columnas de solicitud_evaluadores (solicitud_id, evaluador_id) no
+ * chocan con las de COLUMNAS, así que se pueden seleccionar sin prefijo.
+ *
+ * @param {number} evaluadorId
+ * @returns {Promise<Array<object>>} Filas con las columnas de COLUMNAS.
+ */
+export async function listarAsignadasA(evaluadorId) {
+  const resultado = await pool.query(
+    `SELECT ${COLUMNAS} FROM solicitudes
+       JOIN solicitud_evaluadores ON solicitud_id = id
+      WHERE evaluador_id = $1
+      ORDER BY creado_en ASC, id ASC`,
+    [evaluadorId]
+  );
+
+  return resultado.rows;
+}
+
+/**
+ * Todas las solicitudes que esperan revisión (Enviada o En Evaluación), de la
+ * más vieja a la más nueva. Es la bandeja del administrador.
+ * @returns {Promise<Array<object>>} Filas con las columnas de COLUMNAS.
+ */
+export async function listarEnRevision() {
+  const resultado = await pool.query(
+    `SELECT ${COLUMNAS} FROM solicitudes
+      WHERE estado IN ('Enviada', 'En Evaluación')
+      ORDER BY creado_en ASC, id ASC`
+  );
+
+  return resultado.rows;
+}
+
+/**
  * ¿Tiene ya el estudiante una solicitud vigente en esta convocatoria?
  *
  * "Vigente" es cualquier estado salvo Rechazada: una solicitud en curso o ya

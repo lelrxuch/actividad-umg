@@ -33,6 +33,34 @@ function denegar(mensaje) {
   throw error;
 }
 
+/** Qué ve cada rol en la bandeja de revisión (GET /api/solicitudes/asignadas). */
+export const BANDEJA = Object.freeze({
+  ASIGNADAS: 'asignadas',
+  EN_REVISION: 'en-revision',
+});
+
+/**
+ * Decide qué bandeja de revisión le corresponde a quien pregunta, o lanza 403.
+ *
+ * Evaluador: solo lo que tiene asignado. Administrador: todo lo que espera
+ * revisión. Un estudiante no tiene bandeja: sus solicitudes están en
+ * GET /api/solicitudes.
+ *
+ * @param {{id: *, rol: string}} [usuario]
+ * @returns {string} Una de {@link BANDEJA}.
+ * @throws {Error & { status: number }} 403 si no es evaluador ni administrador.
+ */
+export function bandejaDe(usuario) {
+  if (!usuario || usuario.id === undefined || usuario.id === null) {
+    denegar('No se identificó a quien solicita la acción.');
+  }
+
+  if (usuario.rol === 'administrador') return BANDEJA.EN_REVISION;
+  if (usuario.rol === 'evaluador') return BANDEJA.ASIGNADAS;
+
+  denegar('Solo evaluadores y administradores tienen bandeja de revisión.');
+}
+
 /**
  * Autoriza una acción sobre una solicitud, o lanza 403.
  *
