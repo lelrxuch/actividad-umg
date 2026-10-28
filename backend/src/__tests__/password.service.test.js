@@ -31,23 +31,26 @@ describe('Password Service - SCRUM-15', () => {
       });
       usuarioRepo.saveResetToken.mockResolvedValueOnce(undefined);
       const result2 = await passwordService.solicitarRecuperacion('existe@test.com');
-      // En ambos casos no debería revelar información (la función retorna token solo en pruebas locales)
-      expect(typeof result2 === 'string' || result2 === undefined).toBe(true);
+      // El token nunca sale de la función: si saliera, alguien lo pondría en la respuesta.
+      expect(result2).toBeUndefined();
     });
 
-    it('debe generar un token cuando el email existe', async () => {
+    it('debe generar y guardar un token cuando el email existe, sin devolverlo', async () => {
       usuarioRepo.findByEmail.mockResolvedValueOnce({
         id: 1,
         email: 'usuario@test.com',
       });
       usuarioRepo.saveResetToken.mockResolvedValueOnce(undefined);
 
-      const token = await passwordService.solicitarRecuperacion('usuario@test.com');
-      
-      expect(token).toBeDefined();
-      expect(typeof token).toBe('string');
-      expect(token.length).toBeGreaterThan(0);
+      const resultado = await passwordService.solicitarRecuperacion('usuario@test.com');
+
+      expect(resultado).toBeUndefined();
       expect(usuarioRepo.saveResetToken).toHaveBeenCalledOnce();
+      // Se guarda el hash SHA-256 (64 hex), nunca el token en claro.
+      const [id, tokenHash, expiraEn] = usuarioRepo.saveResetToken.mock.calls[0];
+      expect(id).toBe(1);
+      expect(tokenHash).toMatch(/^[0-9a-f]{64}$/);
+      expect(expiraEn).toBeInstanceOf(Date);
     });
   });
 
