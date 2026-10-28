@@ -90,6 +90,18 @@ export async function listarMisSolicitudes(req, res) {
 }
 
 /**
+ * GET /api/solicitudes/asignadas
+ * Bandeja de revisión: asignadas al evaluador, o en revisión para el administrador.
+ */
+export async function listarAsignadas(req, res) {
+  try {
+    res.json(await solicitudService.listarAsignadas(solicitante(req)));
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
+/**
  * GET /api/solicitudes/:id
  * Consulta el estado y acciones válidas de una solicitud.
  */
