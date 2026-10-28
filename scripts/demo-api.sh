@@ -13,8 +13,9 @@
 #
 # Variables opcionales:
 #   API=http://localhost:4000   dónde está el backend
-#   PSQL="psql -d becas_db"     cómo llegar a la base, para sembrar la
-#                               asignación de evaluador (no hay endpoint aún)
+#   PSQL="psql -d becas_db"     cómo llegar a la base, para dar el rol de
+#                               evaluador y de administrador (no hay endpoint
+#                               de roles aún; la asignación ya usa la API)
 set -uo pipefail
 
 API=${API:-http://localhost:4000}
@@ -52,6 +53,11 @@ token() {       # token <correo>
   curl -s -X POST "$API/api/auth/login" -H "Content-Type: application/json" \
     -d "{\"email\":\"$1\",\"password\":\"$CLAVE\"}" |
     sed -n 's/.*"token":"\([^"]*\)".*/\1/p'
+}
+id_de() {       # id_de <correo>: el id de usuario que devuelve el login
+  curl -s -X POST "$API/api/auth/login" -H "Content-Type: application/json" \
+    -d "{\"email\":\"$1\",\"password\":\"$CLAVE\"}" |
+    sed -n 's/.*"usuario":{"id":\([0-9]*\).*/\1/p'
 }
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -132,7 +138,7 @@ echo "   a mirar el estado, para no revelarle que la acción existiría en otro.
 comparar "el dueño pide un dictamen" "403" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/dictamen" \
   -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_DUENO" -d '{"aprobado":true}')"
 echo "   El 409 del patrón State se ve con quien SÍ puede dictaminar, en el"
-echo "   estado equivocado. Se verifica en el paso 15, con el evaluador ya asignado."
+echo "   estado equivocado. Se verifica en el paso 15, con la administradora."
 
 # ───────────────────────────────────────────────────────────────────────────────
 t "13. Un estudiante NO puede dictaminar su propia beca (corrección de SCRUM-35)"
@@ -166,35 +172,46 @@ else
   comparar "el dueño descarga"          "200" "$(codigo "$API/api/documentos/$ID_DOC/descargar" -H "Authorization: Bearer $TK_DUENO")"
   comparar "otro estudiante descarga"   "403" "$(codigo "$API/api/documentos/$ID_DOC/descargar" -H "Authorization: Bearer $TK_OTRO")"
 
-  # La asignación de evaluadores todavía no tiene endpoint (EPIC 4). Se siembra
-  # por SQL cuando hay acceso a la base; si no, se omiten los dos casos de
-  # evaluador y se dice por qué.
+  # Los roles todavía no tienen endpoint: se dan por SQL cuando hay acceso a la
+  # base; si no, se omiten los casos de evaluador y se dice por qué. La
+  # asignación ya no: va por POST /api/solicitudes/:id/evaluadores.
   PSQL=${PSQL:-}
   if [ -z "$PSQL" ] && command -v psql >/dev/null 2>&1; then PSQL="psql -d becas_db"; fi
   if [ -n "$PSQL" ]; then
     EV_SI="evalsi.$SUFIJO@mineduc.gob.gt"; EV_NO="evalno.$SUFIJO@mineduc.gob.gt"
     registrar "Evaluador Asignado" "$EV_SI"; registrar "Evaluador Ajeno" "$EV_NO"
     $PSQL -q -c "UPDATE usuarios SET rol='evaluador' WHERE email IN ('$EV_SI','$EV_NO')" 2>/dev/null
-    $PSQL -q -c "INSERT INTO solicitud_evaluadores (solicitud_id, evaluador_id)
-                 SELECT $ID_SOL, id FROM usuarios WHERE email='$EV_SI'
-                 ON CONFLICT DO NOTHING" 2>/dev/null
     ADMIN="admin.$SUFIJO@mineduc.gob.gt"
     registrar "Administradora Demo" "$ADMIN"
     $PSQL -q -c "UPDATE usuarios SET rol='administrador' WHERE email='$ADMIN'" 2>/dev/null
+    # El rol viaja en el JWT: los tokens se piden DESPUÉS de cambiarlo.
     TK_EV_SI=$(token "$EV_SI"); TK_EV_NO=$(token "$EV_NO"); TK_ADMIN=$(token "$ADMIN")
-    comparar "evaluador ASIGNADO descarga" "200" "$(codigo "$API/api/documentos/$ID_DOC/descargar" -H "Authorization: Bearer $TK_EV_SI")"
-    comparar "evaluador AJENO descarga"    "403" "$(codigo "$API/api/documentos/$ID_DOC/descargar" -H "Authorization: Bearer $TK_EV_NO")"
+    ID_EV_SI=$(id_de "$EV_SI"); ID_EV_NO=$(id_de "$EV_NO"); ID_OTRO=$(id_de "$OTRO")
+
+    t "14b. Asignación de evaluadores (POST /api/solicitudes/:id/evaluadores)"
+    asignar() {   # asignar <token> <solicitud> <evaluadorId>
+      codigo -X POST "$API/api/solicitudes/$2/evaluadores" -H 'Content-Type: application/json' \
+        -H "Authorization: Bearer $1" -d "{\"evaluadorId\":${3:-null}}"
+    }
+    comparar "un estudiante intenta asignar"          "403" "$(asignar "$TK_DUENO" "$ID_SOL" "$ID_EV_SI")"
+    comparar "un evaluador intenta asignarse"         "403" "$(asignar "$TK_EV_SI" "$ID_SOL" "$ID_EV_SI")"
+    comparar "asignar a una solicitud que no existe"  "404" "$(asignar "$TK_ADMIN" 2147483647 "$ID_EV_SI")"
+    comparar "asignar a un estudiante como evaluador" "400" "$(asignar "$TK_ADMIN" "$ID_SOL" "$ID_OTRO")"
+    echo "   Un evaluador asignado puede descargar el expediente: en Borrador lo"
+    echo "   vería antes de que el estudiante lo envíe. Se asigna después del envío."
+    comparar "asignar a un Borrador"                  "409" "$(asignar "$TK_ADMIN" "$ID_SOL" "$ID_EV_SI")"
+    comparar "sin asignar, el evaluador no descarga"  "403" "$(codigo "$API/api/documentos/$ID_DOC/descargar" -H "Authorization: Bearer $TK_EV_SI")"
   else
-    echo "   (sin acceso a psql: se omiten los dos casos de evaluador."
+    echo "   (sin acceso a psql: se omiten los casos de evaluador."
     echo "    Correr con PSQL=\"psql -d becas_db\" para incluirlos.)"
   fi
   echo "   Ningún if sobre roles en el controller: el Proxy lo decide."
 
   if [ -n "${TK_EV_SI:-}" ]; then
     t "15. PATRÓN STATE — el 409 con quien SÍ tiene derecho a la acción"
-    echo "   El evaluador asignado puede dictaminar, pero no sobre un Borrador:"
-    comparar "evaluador dictamina un Borrador" "409" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/dictamen" \
-      -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_EV_SI" -d '{"aprobado":true}')"
+    echo "   La administradora puede dictaminar, pero no sobre un Borrador:"
+    comparar "la administradora dictamina un Borrador" "409" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/dictamen" \
+      -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_ADMIN" -d '{"aprobado":true}')"
     # SCRUM-39: no se envía un expediente incompleto. Una solicitud
     # universitaria exige dni, titulo y carta; hasta aquí solo tiene el dni.
     for faltante in titulo carta; do
@@ -214,6 +231,11 @@ else
     echo "   Ahora el ciclo en orden: Borrador → Enviada → En Evaluación → Aprobada"
     comparar "el dueño envía con su CUI" "200" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/enviar" \
       -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_DUENO" -d "{\"cui\":\"$CUI_ANA\"}")"
+    echo "   Ya Enviada, la administradora asigna al evaluador:"
+    comparar "la administradora asigna al evaluador" "201" "$(asignar "$TK_ADMIN" "$ID_SOL" "$ID_EV_SI")"
+    comparar "asignarlo otra vez"                    "409" "$(asignar "$TK_ADMIN" "$ID_SOL" "$ID_EV_SI")"
+    comparar "evaluador ASIGNADO descarga" "200" "$(codigo "$API/api/documentos/$ID_DOC/descargar" -H "Authorization: Bearer $TK_EV_SI")"
+    comparar "evaluador AJENO descarga"    "403" "$(codigo "$API/api/documentos/$ID_DOC/descargar" -H "Authorization: Bearer $TK_EV_NO")"
     echo "   Bandeja de revisión (GET /api/solicitudes/asignadas), con la solicitud ya Enviada:"
     en_bandeja "el evaluador ASIGNADO la ve en su bandeja" "si" "$TK_EV_SI"
     en_bandeja "el evaluador AJENO no la ve"               "no" "$TK_EV_NO"
@@ -225,6 +247,7 @@ else
     echo "   Y un estado final ya no admite nada:"
     comparar "reenviar una Aprobada" "409" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/enviar" \
       -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_DUENO" -d "{\"cui\":\"$CUI_ANA\"}")"
+    comparar "asignar un evaluador a una Aprobada" "409" "$(asignar "$TK_ADMIN" "$ID_SOL" "$ID_EV_NO")"
     curl -s "$API/api/solicitudes/$ID_SOL" -H "Authorization: Bearer $TK_DUENO" | sed 's/^/   /'
   fi
 fi

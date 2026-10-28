@@ -43,6 +43,21 @@ export class IEstadoSolicitud {
   }
 
   /**
+   * ¿Se le pueden asignar evaluadores en este estado?
+   *
+   * Un evaluador asignado puede descargar el expediente. En Borrador lo vería
+   * antes de que el estudiante decida enviarlo, y en un estado final ganaría
+   * acceso a datos personales sin nada que evaluar. Por eso, igual que las
+   * transiciones, queda prohibido por omisión: solo lo habilitan los estados
+   * que esperan revisión.
+   *
+   * @returns {boolean}
+   */
+  get admiteEvaluadores() {
+    return false;
+  }
+
+  /**
    * Envía la solicitud a revisión.
    * @param {import('./Solicitud.js').Solicitud} solicitud
    * @throws {TransicionInvalidaError} Si el estado actual no permite enviar.

@@ -8,7 +8,7 @@ corregirla es parte del punto 6 del DoD.
 conectado o le falta una parte · `STUB` archivo creado sin lógica · `FALTANTE`
 ni archivo hay
 
-**Resumen:** 26 endpoints · 353 pruebas en 20 archivos (backend) · 85 pruebas
+**Resumen:** 28 endpoints · 408 pruebas en 23 archivos (backend) · 85 pruebas
 en 7 archivos (frontend) · los 6 patrones de diseño implementados · el flujo
 completo del estudiante funciona desde la aplicación
 
@@ -49,11 +49,13 @@ completo del estudiante funciona desde la aplicación
 |---|---|---|
 | Ciclo de vida de 5 estados | LISTO | 27 |
 | Crear, consultar, enviar, evaluar, dictaminar | LISTO | 12 |
-| Reglas del flujo del estudiante: expediente completo para enviar, una solicitud vigente por convocatoria, identidad al enviar | LISTO | 32 |
+| Reglas del flujo del estudiante: expediente completo para enviar, una solicitud vigente por convocatoria, identidad al enviar | LISTO | 35 |
 | Autorización por acción y por actor | LISTO | 17 |
+| Bandeja de revisión (`GET /api/solicitudes/asignadas`) | LISTO | 12 |
+| Asignación de evaluadores (`POST /api/solicitudes/:id/evaluadores`): solo administrador, solo en Enviada o En Evaluación | LISTO | 30 |
 | Catálogo de modalidades por HTTP | LISTO | 7 |
 | Manejo de errores del controller | LISTO | 8 |
-| Validación de identidad contra RENAP al enviar | LISTO desde SCRUM-38. El estudiante escribe su CUI al enviar; se valida contra RENAP, el nombre de RENAP se compara con el de la cuenta y el CUI validado queda en `solicitudes.cui` | Incluidas en las 32 de arriba y en las de `structural.services` |
+| Validación de identidad contra RENAP al enviar | LISTO desde SCRUM-38. El estudiante escribe su CUI al enviar; se valida contra RENAP, el nombre de RENAP se compara con el de la cuenta y el CUI validado queda en `solicitudes.cui` | Incluidas en las 35 de arriba y en las de `structural.services` |
 
 ### Expedientes y documentos
 
@@ -68,7 +70,7 @@ completo del estudiante funciona desde la aplicación
 
 | Módulo | Estado |
 |---|---|
-| Crear comité, asignar evaluadores, repartir solicitudes | **FALTANTE.** La tabla `solicitud_evaluadores` existe; hoy la asignación se siembra por SQL |
+| Crear comité, asignar evaluadores, repartir solicitudes | **PARCIAL.** La asignación manual de un evaluador a una solicitud ya tiene endpoint (ver Solicitudes); faltan los comités y el reparto |
 | Criterios de evaluación y registro de puntajes | **FALTANTE** |
 | Cupo, motivo de rechazo y ranqueo | **FALTANTE** |
 | Reportes | **FALTANTE** |
@@ -107,7 +109,7 @@ Justificación de cada uno: `docs/justificacion-patrones.md`.
 | Crear y publicar convocatorias (administrador) | — | **FALTANTE.** El backend existe; falta la pantalla |
 | Pruebas del cliente | `src/__tests__/` | LISTO: 85 pruebas en 7 archivos, todas importan código de producción |
 
-> Las pantallas usan hoy **10 de los 26 endpoints**: todo el flujo del
+> Las pantallas usan hoy **10 de los 28 endpoints**: todo el flujo del
 > estudiante. Lo que falta para que una solicitud recorra la aplicación de punta
 > a punta es la bandeja del evaluador.
 

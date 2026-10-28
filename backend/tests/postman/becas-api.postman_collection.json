@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "75fb8fb5-373e-4799-b909-6aee606719ed",
     "name": "Becas API - Integración",
-    "description": "Colección de pruebas de integración para la Plataforma Nacional de Gestión de Becas.\n\nCómo correrla:\n1. Levantar el backend (npm run dev) con la base de datos local activa.\n2. Importar esta colección en Postman.\n3. Correr la carpeta completa en orden. Antes de reset-password, copiar el token de recuperación de la consola del servidor (forgot-password no lo devuelve) a la variable reset_token.\n\nPendientes conocidos:\n- Los endpoints /api/auth/registro y /api/auth/login todavía no existen (PR #6 en progreso). Cuando entren, hay que agregar un pre-request de login que llene la variable jwt_token automáticamente.\n- Mientras tanto, la petición de perfil requiere pegar un JWT válido a mano en la variable jwt_token.",
+    "description": "Colección de pruebas de integración para la Plataforma Nacional de Gestión de Becas.\n\nCómo correrla:\n1. Levantar el backend (npm run dev) con la base de datos local activa.\n2. Importar esta colección en Postman.\n3. Correr la carpeta completa en orden. Antes de reset-password, copiar el token de recuperación de la consola del servidor (forgot-password no lo devuelve) a la variable reset_token.\n\nPendientes conocidos:\n- Los endpoints /api/auth/registro y /api/auth/login todavía no existen (PR #6 en progreso). Cuando entren, hay que agregar un pre-request de login que llene la variable jwt_token automáticamente.\n- Mientras tanto, la petición de perfil requiere pegar un JWT válido a mano en la variable jwt_token.\n\nAsignación de evaluadores (POST /api/solicitudes/:id/evaluadores):\n- admin_jwt_token: JWT de un usuario con rol administrador (el rol se da por SQL y el token se pide después, porque viaja en el JWT).\n- solicitud_id: una solicitud en estado Enviada o En Evaluación (en cualquier otro estado responde 409); evaluador_id: un usuario con rol evaluador que aún no esté asignado a ella; estudiante_id: cualquier usuario con rol estudiante.\n- Correr Success antes de \"Ya asignado\": el 409 depende de la asignación que hace Success.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "58175203"
   },
@@ -444,6 +444,269 @@
         }
       },
       "response": []
+    },
+    {
+      "name": "POST /api/solicitudes/:id/evaluadores - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201 Created', () => {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('Devuelve la solicitud y el evaluador asignado', () => {",
+              "  const cuerpo = pm.response.json();",
+              "  pm.expect(cuerpo.solicitudId).to.eql(Number(pm.collectionVariables.get('solicitud_id')));",
+              "  pm.expect(cuerpo.evaluador.id).to.eql(Number(pm.collectionVariables.get('evaluador_id')));",
+              "  pm.expect(cuerpo.evaluador).to.not.have.property('password_hash');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"evaluadorId\": {{evaluador_id}}\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "solicitudes",
+            "{{solicitud_id}}",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/solicitudes/:id/evaluadores - Error (Ya asignado)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 409 Conflict', () => {",
+              "  pm.response.to.have.status(409);",
+              "});",
+              "",
+              "pm.test('Devuelve el motivo en error', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"evaluadorId\": {{evaluador_id}}\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "solicitudes",
+            "{{solicitud_id}}",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/solicitudes/:id/evaluadores - Error (No es administrador)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 403 Forbidden', () => {",
+              "  pm.response.to.have.status(403);",
+              "});",
+              "",
+              "pm.test('Devuelve el motivo en error', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"evaluadorId\": {{evaluador_id}}\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "solicitudes",
+            "{{solicitud_id}}",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/solicitudes/:id/evaluadores - Error (Solicitud inexistente)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 404 Not Found', () => {",
+              "  pm.response.to.have.status(404);",
+              "});",
+              "",
+              "pm.test('Devuelve el motivo en error', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"evaluadorId\": {{evaluador_id}}\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/solicitudes/2147483647/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "solicitudes",
+            "2147483647",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/solicitudes/:id/evaluadores - Error (No es evaluador)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Devuelve el motivo en error', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"evaluadorId\": {{estudiante_id}}\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "solicitudes",
+            "{{solicitud_id}}",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
     }
   ],
   "variable": [
@@ -459,6 +722,26 @@
     },
     {
       "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "solicitud_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "evaluador_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "estudiante_id",
       "value": "",
       "type": "string"
     }

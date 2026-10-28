@@ -188,8 +188,8 @@ Lo que cambia respecto a desarrollo:
 ## 5. Pruebas
 
 ```bash
-cd backend  && npm test        # 314 pruebas en 19 archivos
-cd frontend && npx vitest run  #  19 pruebas en  2 archivos
+cd backend  && npm test        # 408 pruebas en 23 archivos
+cd frontend && npx vitest run  #  85 pruebas en  7 archivos
 ```
 
 En el frontend hay que usar `npx vitest run` y no `npm test`: el script `test`
@@ -217,7 +217,7 @@ El detalle completo de la estrategia está en el Plan de Pruebas.
 
 ## 6. La API
 
-26 endpoints. Los marcados **público** no requieren token; los demás esperan la
+28 endpoints. Los marcados **público** no requieren token; los demás esperan la
 cabecera `Authorization: Bearer <token>`.
 
 ### Autenticación
@@ -250,7 +250,9 @@ cabecera `Authorization: Bearer <token>`.
 | GET | `/api/solicitudes/tipos/:tipo/documentos` | público |
 | POST | `/api/solicitudes` | estudiante |
 | GET | `/api/solicitudes` | estudiante — las suyas |
+| GET | `/api/solicitudes/asignadas` | evaluador — las que tiene asignadas; administrador — todas las Enviadas o En Evaluación |
 | GET | `/api/solicitudes/:id` | dueño, evaluador asignado o administrador |
+| POST | `/api/solicitudes/:id/evaluadores` | administrador, solo en Enviada o En Evaluación |
 | POST | `/api/solicitudes/:id/enviar` | dueño |
 | POST | `/api/solicitudes/:id/evaluar` | evaluador asignado |
 | POST | `/api/solicitudes/:id/dictamen` | evaluador asignado |
@@ -265,6 +267,27 @@ cabecera `Authorization: Bearer <token>`.
 | GET | `/api/documentos/solicitud/:solicitudId` | dueño, evaluador asignado o administrador |
 | GET | `/api/documentos/:id/descargar` | lo decide `DocumentoProxy` |
 | GET | `/api/documentos/:id/permiso` | sesión |
+
+### Asignación de evaluadores
+
+`POST /api/solicitudes/:id/evaluadores` con cuerpo `{ "evaluadorId": 77 }`.
+Responde `201` con `{ solicitudId, evaluador: { id, nombre, email } }`. Las
+comprobaciones van en este orden y la primera que falla decide la respuesta:
+
+| Código | Cuándo |
+|---|---|
+| 403 | Quien pide no es administrador. Se revisa antes de buscar la solicitud, para no revelar con un 404 qué ids existen |
+| 400 | `evaluadorId` falta o no es un entero positivo |
+| 404 | La solicitud no existe |
+| 400 | El usuario no existe o su rol no es `evaluador` |
+| 409 | La solicitud no está en Enviada ni En Evaluación |
+| 409 | El evaluador ya estaba asignado a esa solicitud |
+
+Solo Enviada y En Evaluación admiten evaluadores porque un evaluador asignado
+puede descargar el expediente: en Borrador lo vería antes de que el estudiante
+lo envíe, y en Aprobada o Rechazada ganaría acceso a datos personales sin nada
+que evaluar. La regla vive en los estados (`IEstadoSolicitud#admiteEvaluadores`,
+prohibida por omisión), no en el service.
 
 ### Códigos de respuesta
 
@@ -313,7 +336,9 @@ directorio de subidas, siempre con barras normales. Un índice único sobre
 
 ### solicitud_evaluadores
 Qué evaluador revisa qué solicitud. Es la tabla que consulta `DocumentoProxy`
-para decidir quién puede ver un expediente.
+para decidir quién puede ver un expediente. Se llena con
+`POST /api/solicitudes/:id/evaluadores`; la llave primaria
+`(solicitud_id, evaluador_id)` es la que decide el 409 de "ya asignado".
 
 ### Cadenas que no se pueden tocar
 

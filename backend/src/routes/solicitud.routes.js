@@ -7,6 +7,7 @@ import {
   listarMisSolicitudes,
   listarAsignadas,
   obtenerPorId,
+  asignarEvaluador,
   enviar,
   evaluar,
   dictaminar,
@@ -25,6 +26,8 @@ router.get('/', autenticado, listarMisSolicitudes);
 // Tiene que ir ANTES de '/:id': si no, Express toma "asignadas" como un id.
 router.get('/asignadas', autenticado, listarAsignadas);
 router.get('/:id', autenticado, obtenerPorId);
+// Solo administrador; lo decide solicitud.autorizacion, no la ruta.
+router.post('/:id/evaluadores', autenticado, asignarEvaluador);
 router.post('/:id/enviar', autenticado, enviar);
 router.post('/:id/evaluar', autenticado, evaluar);
 router.post('/:id/dictamen', autenticado, dictaminar);
