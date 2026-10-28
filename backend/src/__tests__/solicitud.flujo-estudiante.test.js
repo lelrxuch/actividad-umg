@@ -187,6 +187,45 @@ describe('SCRUM-38 — se envía con un CUI que existe en RENAP y es del dueño'
     expect(solicitudRepository.actualizarEstado).not.toHaveBeenCalled();
   });
 
+  it('"no existe" y "es de otra persona" dan el mismo mensaje: no se puede sondear RENAP', async () => {
+    // Con mensajes distintos, quien prueba CUIs ajenos sabría cuáles existen.
+    const noExiste = await solicitudService
+      .enviarSolicitud(42, { usuario: DUENO, cui: '9999999999999' })
+      .catch((e) => e);
+    const ajeno = await solicitudService
+      .enviarSolicitud(42, { usuario: DUENO, cui: '2345678901202' })
+      .catch((e) => e);
+
+    expect(noExiste.status).toBe(400);
+    expect(ajeno.status).toBe(400);
+    expect(noExiste.message).toBe(ajeno.message);
+    expect(noExiste.message).toBe(solicitudService.MENSAJE_IDENTIDAD_NO_VERIFICADA);
+    // Ni el CUI consultado ni la respuesta de RENAP viajan en el mensaje.
+    expect(noExiste.message).not.toMatch(/9999999999999|encontrado|padron/i);
+    expect(ajeno.message).not.toMatch(/2345678901202/);
+  });
+
+  it('el error de formato sí es distinto: no consulta RENAP y dice qué corregir', async () => {
+    const error = await solicitudService
+      .enviarSolicitud(42, { usuario: DUENO, cui: '12345' })
+      .catch((e) => e);
+
+    expect(error.status).toBe(400);
+    expect(error.message).toMatch(/13 dígitos/);
+    expect(error.message).not.toBe(solicitudService.MENSAJE_IDENTIDAD_NO_VERIFICADA);
+  });
+
+  it('RENAP caído sigue siendo 503 con su propio mensaje: es reintentable', async () => {
+    const { validadorIdentidad } = renapCaido();
+
+    const error = await solicitudService
+      .enviarSolicitud(42, { usuario: DUENO, cui: CUI_ANA, validadorIdentidad })
+      .catch((e) => e);
+
+    expect(error.status).toBe(503);
+    expect(error.message).not.toBe(solicitudService.MENSAJE_IDENTIDAD_NO_VERIFICADA);
+  });
+
   it('si RENAP no responde: 503, no cambia el estado y se puede reintentar', async () => {
     const { validadorIdentidad } = renapCaido();
 
@@ -354,7 +393,7 @@ describe('controller — el contrato de error lleva lo que el cliente necesita',
     expect(res.cuerpo.estado).toBe('Enviada');
   });
 
-  it('enviar con un CUI desconocido responde 400 con el motivo', async () => {
+  it('enviar con un CUI desconocido responde 400 con el mensaje único', async () => {
     solicitudRepository.findById.mockResolvedValue(fila());
     documentoRepository.listarDeSolicitud.mockResolvedValue(EXPEDIENTE_COMPLETO);
     const res = resFalso();
@@ -365,7 +404,7 @@ describe('controller — el contrato de error lleva lo que el cliente necesita',
     );
 
     expect(res.statusCode).toBe(400);
-    expect(res.cuerpo.error).toMatch(/no encontrado/i);
+    expect(res.cuerpo.error).toBe(solicitudService.MENSAJE_IDENTIDAD_NO_VERIFICADA);
   });
 
   it('crear duplicada responde 409 con la solicitud existente', async () => {

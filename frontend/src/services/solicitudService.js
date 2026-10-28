@@ -44,7 +44,8 @@ export const obtenerSolicitud = async (id) => {
  * @param {number|string} id
  * @param {string} cui CUI del estudiante; el backend lo valida contra RENAP.
  * @throws 400 con `faltantes` si el expediente está incompleto.
- * @throws 400 si el CUI no existe o no corresponde al nombre de la cuenta.
+ * @throws 400 si el CUI no existe o no corresponde al nombre de la cuenta; el
+ *   backend da el mismo mensaje en los dos casos, a propósito.
  * @throws 503 si RENAP no respondió; se puede reintentar.
  */
 export const enviarSolicitud = async (id, cui) => {

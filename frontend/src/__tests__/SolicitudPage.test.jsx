@@ -182,7 +182,7 @@ describe('SolicitudPage', () => {
   });
 
   it.each([
-    ['un CUI rechazado por RENAP', 'No se pudo validar la identidad del CUI 9999999999999: CIUDADANO NO ENCONTRADO EN EL PADRON'],
+    ['un CUI rechazado por RENAP', 'No se pudo verificar su identidad con el CUI ingresado. Revise que sea el de su DPI y que coincida con el nombre de su cuenta.'],
     ['RENAP caído', 'El servicio de RENAP no está disponible: ECONNREFUSED'],
   ])('%s se muestra como error y deja reintentar', async (_caso, mensaje) => {
     obtenerSolicitud.mockResolvedValue(solicitud());
