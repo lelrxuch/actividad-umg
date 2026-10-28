@@ -60,17 +60,15 @@
               "  pm.expect(pm.response.json()).to.have.property('message');",
               "});",
               "",
-              "// tokenDebug solo lo devuelve el backend cuando NODE_ENV !== 'production'",
-              "// (ver password.controller.js). Por eso no se afirma su existencia: se",
-              "// guarda si viene, para que reset-password pueda encadenarse sin pegar",
-              "// el token a mano.",
-              "const cuerpo = pm.response.json();",
-              "if (cuerpo.tokenDebug) {",
-              "  pm.collectionVariables.set('reset_token', cuerpo.tokenDebug);",
-              "  console.log('reset_token guardado desde tokenDebug');",
-              "} else {",
-              "  console.log('Sin tokenDebug: o el correo no existe, o NODE_ENV=production.');",
-              "}"
+              "// El token de recuperacion NUNCA viaja en la respuesta: antes salia como",
+              "// tokenDebug y permitia cambiar la contrasena de cualquier cuenta. Para",
+              "// encadenar reset-password, copiar el token de la consola del servidor",
+              "// (solo se muestra fuera de produccion) a la variable reset_token.",
+              "pm.test('No devuelve el token de recuperacion', () => {",
+              "  const cuerpo = pm.response.json();",
+              "  pm.expect(cuerpo).to.not.have.property('tokenDebug');",
+              "  pm.expect(Object.keys(cuerpo)).to.eql(['message']);",
+              "});"
             ],
             "type": "text/javascript"
           }
