@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "75fb8fb5-373e-4799-b909-6aee606719ed",
     "name": "Becas API - Integración",
-    "description": "Colección de pruebas de integración para la Plataforma Nacional de Gestión de Becas.\n\nCómo correrla:\n1. Levantar el backend (npm run dev) con la base de datos local activa.\n2. Importar esta colección en Postman.\n3. Correr la carpeta completa en orden. La petición de forgot-password guarda el token de recuperación en la variable reset_token, que reset-password reutiliza.\n\nPendientes conocidos:\n- Los endpoints /api/auth/registro y /api/auth/login todavía no existen (PR #6 en progreso). Cuando entren, hay que agregar un pre-request de login que llene la variable jwt_token automáticamente.\n- Mientras tanto, la petición de perfil requiere pegar un JWT válido a mano en la variable jwt_token.",
+    "description": "Colección de pruebas de integración para la Plataforma Nacional de Gestión de Becas.\n\nCómo correrla:\n1. Levantar el backend (npm run dev) con la base de datos local activa.\n2. Importar esta colección en Postman.\n3. Correr la carpeta completa en orden. Antes de reset-password, copiar el token de recuperación de la consola del servidor (forgot-password no lo devuelve) a la variable reset_token.\n\nPendientes conocidos:\n- Los endpoints /api/auth/registro y /api/auth/login todavía no existen (PR #6 en progreso). Cuando entren, hay que agregar un pre-request de login que llene la variable jwt_token automáticamente.\n- Mientras tanto, la petición de perfil requiere pegar un JWT válido a mano en la variable jwt_token.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "58175203"
   },
