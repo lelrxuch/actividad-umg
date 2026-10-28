@@ -16,10 +16,26 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+/**
+ * Genera y guarda un token de recuperación si el correo está registrado.
+ *
+ * NO devuelve el token, exista o no la cuenta. Antes lo devolvía y el
+ * controller lo ponía en la respuesta (`tokenDebug`) siempre que NODE_ENV no
+ * fuera 'production', que es el valor por defecto: cualquiera podía cambiar la
+ * contraseña de cualquier cuenta conociendo solo el correo, y como el token
+ * solo aparecía si la cuenta existía, además revelaba qué correos están
+ * registrados. Si no sale de esta función, ninguna capa de arriba lo puede
+ * filtrar.
+ *
+ * Mientras no haya envío de correo, el token se muestra en la consola del
+ * servidor para probar en local, nunca en producción: los logs también se leen.
+ *
+ * @param {string} email
+ * @returns {Promise<void>}
+ */
 export async function solicitarRecuperacion(email) {
   const usuario = await findByEmail(email);
 
-  // Respuesta idéntica exista o no el usuario, para no filtrar qué correos están registrados
   if (!usuario) return;
 
   const token = crypto.randomBytes(32).toString('hex');
@@ -28,10 +44,10 @@ export async function solicitarRecuperacion(email) {
 
   await saveResetToken(usuario.id, tokenHash, expiraEn);
 
-  // TEMPORAL: aquí iría el envío real del correo. Por ahora lo dejamos en consola para pruebas.
-  console.log(`Token de recuperación para ${email}: ${token}`);
-
-  return token; // solo se usa para pruebas locales, no debería exponerse en producción
+  // TEMPORAL: aquí iría el envío real del correo.
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`Token de recuperación para ${email}: ${token}`);
+  }
 }
 
 /**
