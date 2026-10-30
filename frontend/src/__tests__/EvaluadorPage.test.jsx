@@ -66,4 +66,20 @@ describe('EvaluadorPage', () => {
       expect(screen.getByRole('button', { name: 'Descargar' })).toBeInTheDocument();
     });
   });
+
+  it('el admin no ve los botones Aprobar ni Rechazar en una solicitud En Evaluación', async () => {
+  localStorage.setItem('user', JSON.stringify({ nombre: 'Admin User', rol: 'administrador' }));
+  solicitudService.listarAsignadas.mockResolvedValue([
+    { id: 99, estado: 'En Evaluación', tipo: 'pregrado', accionesPermitidas: ['dictaminar'] },
+  ]);
+
+  renderConRouter(<EvaluadorPage />);
+
+  await waitFor(() => {
+    expect(screen.getByText('Solicitud #99')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Aprobar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Rechazar/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Sin acciones pendientes')).toBeInTheDocument();
+  });
+});
 });
