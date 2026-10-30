@@ -5,9 +5,9 @@
 
 | | |
 |---|---|
-| **Dirigido a** | Estudiantes que solicitan una beca |
-| **Versión del documento** | 1.0 |
-| **Fecha** | 27/10/2026 |
+| **Dirigido a** | Estudiantes que solicitan una beca (secciones 1 a 11) y evaluadores del Ministerio (sección 12) |
+| **Versión del documento** | 1.1 |
+| **Fecha** | 29/10/2026 |
 
 Este manual explica cómo usar la plataforma desde el navegador. Para instalarla
 o configurarla, consulte el **Manual Técnico** (`docs/manual-tecnico.md`).
@@ -30,7 +30,8 @@ contra su base de datos, no maquetas.
 9. [Mis solicitudes](#9-mis-solicitudes)
 10. [Recuperar la contraseña](#10-recuperar-la-contraseña)
 11. [Mensajes frecuentes y qué hacer](#11-mensajes-frecuentes-y-qué-hacer)
-12. [Alcance de esta versión](#12-alcance-de-esta-versión)
+12. [Para evaluadores: revisar y dictaminar](#12-para-evaluadores-revisar-y-dictaminar)
+13. [Alcance de esta versión](#13-alcance-de-esta-versión)
 
 ---
 
@@ -193,7 +194,12 @@ esté vacío.
    formato inválido o pertenece a otra persona, no se envía y la solicitud
    sigue en Borrador.
 
-   ![CUI que no corresponde al nombre de la cuenta](manual-usuario/img/09-cui-no-corresponde.png)
+   Si el CUI no existe o es de otra persona, el mensaje es el mismo en los dos
+   casos: *No se pudo verificar su identidad con el CUI ingresado.* Es a
+   propósito: si la plataforma dijera cuál de los dos pasó, cualquiera podría
+   averiguar qué CUI existen y a nombre de quién.
+
+   ![CUI que no se pudo verificar](manual-usuario/img/09-cui-no-corresponde.png)
 
 Si todo está bien, la solicitud pasa a **Enviada** y aparece la confirmación
 **Su solicitud fue enviada.**
@@ -270,8 +276,7 @@ administrador de la plataforma.
 | *El expediente está incompleto. Falta: …* | Le falta subir algún documento | Suba los que aparecen en rojo y vuelva a enviar |
 | *El archivo supera el límite de 5 MB.* | El archivo es muy grande | Reduzca su tamaño, por ejemplo escaneando a menor resolución |
 | *… el CUI debe tener exactamente 13 dígitos* | El CUI está incompleto o tiene caracteres de más | Escriba los 13 dígitos de su DPI |
-| *… CIUDADANO NO ENCONTRADO EN EL PADRON* | RENAP no tiene ese CUI | Revise que lo escribió bien |
-| *El CUI … no corresponde al nombre registrado en su cuenta.* | El CUI es de otra persona, o el nombre de su cuenta no coincide con el de su DPI | Revise el CUI. Si es el suyo, el nombre de su cuenta no coincide con el de RENAP |
+| *No se pudo verificar su identidad con el CUI ingresado. …* | El CUI no existe en RENAP, es de otra persona, o el nombre de su cuenta no coincide con el de su DPI. La plataforma no dice cuál, a propósito (sección 7) | Revise que escribió bien su CUI. Si es el suyo, el nombre de su cuenta no coincide con el de RENAP |
 | *El servicio de RENAP no está disponible: …* | El servicio de RENAP no respondió | Su solicitud no cambió. Intente de nuevo más tarde |
 | *Token inválido o expirado* | Su sesión venció (dura una hora) | Cierre sesión y vuelva a entrar |
 | *No tiene acceso a esta solicitud.* | Intentó abrir una solicitud que no es suya | Entre a **Mis solicitudes** y abra las suyas |
@@ -279,18 +284,117 @@ administrador de la plataforma.
 
 ---
 
-## 12. Alcance de esta versión
+## 12. Para evaluadores: revisar y dictaminar
+
+Esta sección es para el personal del Ministerio con rol de **evaluador**. Un
+evaluador solo ve y resuelve las solicitudes que el administrador le asignó.
+
+### 12.1 Su cuenta de evaluador
+
+El evaluador se registra igual que cualquier usuario (sección 2), con su correo
+institucional. El rol de evaluador **no se elige al registrarse**: lo asigna el
+administrador técnico del sistema. Hasta que se lo asignen, su cuenta funciona como la
+de un estudiante.
+
+Al iniciar sesión (sección 3), la pantalla de inicio muestra su rol y el enlace
+**Bandeja del evaluador**.
+
+![Inicio de sesión de un evaluador, con el enlace a su bandeja](manual-usuario/img/14-inicio-evaluador.png)
+
+### 12.2 La bandeja del evaluador
+
+Elija **Bandeja del evaluador**. Ahí aparecen, de la más antigua a la más
+reciente, todas las solicitudes que le asignaron, en cualquier estado.
+
+Si todavía no le asignaron ninguna, la bandeja lo indica:
+
+![Bandeja sin solicitudes asignadas](manual-usuario/img/15-bandeja-vacia.png)
+
+Cada solicitud aparece como una tarjeta con su número, su estado, la modalidad
+de beca y el número de identificación del estudiante. Los botones de cada
+tarjeta dependen del estado de la solicitud: la plataforma solo muestra las
+acciones que se pueden hacer en ese momento.
+
+| Estado de la solicitud | Botones que ve |
+|---|---|
+| **Enviada** | **Iniciar Evaluación** |
+| **En Evaluación** | **Aprobar** y **Rechazar** |
+| **Aprobada** o **Rechazada** | Ninguno: *Sin acciones pendientes* |
+
+<!-- PENDIENTE (Marco): cuando la bandeja muestre los documentos del expediente
+     (tarea 4 de Brayan), agregar aquí "12.3 Revisar el expediente", con captura
+     de la lista de documentos y de la descarga, y renumerar 12.3 y 12.4. -->
+
+### 12.3 Iniciar la evaluación
+
+Una solicitud recién asignada está en **Enviada**. Presione **Iniciar
+Evaluación** para tomarla.
+
+![Solicitud asignada, en estado Enviada](manual-usuario/img/16-bandeja-enviada.png)
+
+La solicitud pasa a **En Evaluación**, aparece la confirmación *Solicitud #…
+pasada a "En Evaluación"* y la tarjeta cambia a los botones del dictamen. El
+estudiante ve el nuevo estado en **Mis solicitudes**.
+
+![Solicitud en evaluación, con los botones del dictamen](manual-usuario/img/17-en-evaluacion.png)
+
+### 12.4 Dictaminar: aprobar o rechazar
+
+Cuando termine de revisar la solicitud, presione **Aprobar** o **Rechazar**.
+
+> **El dictamen es definitivo y se aplica con un solo clic.** La plataforma no
+> pide confirmación, y una solicitud **Aprobada** o **Rechazada** ya no se
+> puede cambiar (sección 8). Asegúrese de presionar el botón correcto.
+
+La plataforma confirma *Solicitud #… dictaminada como APROBADA* (o
+*RECHAZADA*) y la tarjeta queda sin acciones pendientes.
+
+![Solicitud aprobada](manual-usuario/img/18-aprobada.png)
+
+El estudiante ve la resolución en **Mis solicitudes**:
+
+![La resolución vista por el estudiante](manual-usuario/img/19-estudiante-aprobada.png)
+
+### 12.5 Qué puede y qué no puede hacer un evaluador
+
+- Solo ve las solicitudes que **le asignaron**. Si intenta abrir otra, la
+  plataforma responde *No tiene acceso a esta solicitud.*
+- Solo puede iniciar la evaluación de una solicitud **Enviada** y solo puede
+  dictaminar una que esté **En Evaluación**. La plataforma rechaza cualquier
+  otro orden.
+- No puede modificar el expediente del estudiante ni subir documentos.
+
+### 12.6 Mensajes para evaluadores
+
+| Mensaje | Qué pasó | Qué hacer |
+|---|---|---|
+| *No hay solicitudes asignadas para evaluar.* | Todavía no le asignaron ninguna | Espere a que el administrador le asigne una |
+| *Solo evaluadores y administradores tienen bandeja de revisión.* | Su cuenta no tiene el rol de evaluador | Pida al administrador que le asigne el rol |
+| *No está asignado como evaluador de esta solicitud.* | La solicitud no es de las suyas | Revise que trabaja con su cuenta, o pida la asignación |
+| *Token inválido o expirado* | Su sesión venció (dura una hora) | Cierre sesión y vuelva a entrar |
+
+<!-- PENDIENTE (Marco): cuando exista la pantalla de asignación (tarea 5 de
+     Brayan), agregar aquí "## 13. Para administradores: asignar evaluadores",
+     con capturas, y pasar "Alcance de esta versión" a la sección 14. -->
+
+---
+
+## 13. Alcance de esta versión
 
 **Lo que cubre este manual.** El recorrido completo del **estudiante**: crear la
 cuenta, ver convocatorias, iniciar una solicitud, armar el expediente, enviarlo
-con validación de identidad y consultar su estado.
+con validación de identidad y consultar su estado. Y el del **evaluador**: ver
+las solicitudes asignadas, iniciar la evaluación y dictaminar.
 
 **Lo que todavía no tiene pantallas**, y por eso no se describe aquí:
 
-- **Evaluadores:** bandeja de solicitudes asignadas, pasar a evaluación y
-  dictaminar. La lógica existe en el sistema; falta la interfaz.
-- **Administradores:** crear, publicar y cerrar convocatorias. La lógica existe;
-  falta la interfaz.
+- **Evaluadores:** la bandeja todavía no muestra los documentos del expediente,
+  ni permite escribir observaciones en el dictamen. La tarjeta identifica al
+  estudiante por su número, no por su nombre.
+- **Administradores:** asignar evaluadores a una solicitud y crear, publicar y
+  cerrar convocatorias. La lógica existe en el sistema y se usa por la API;
+  falta la interfaz. Por eso, en esta versión, la asignación de un evaluador la
+  hace el administrador técnico, no desde el navegador.
 - **Comités, evaluación con puntajes, cupos y reportes:** fuera del alcance de
   esta entrega.
 - **Recuperación de contraseña:** incompleta (sección 10).
