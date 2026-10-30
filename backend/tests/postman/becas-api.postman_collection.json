@@ -446,6 +446,132 @@
       "response": []
     },
     {
+      "name": "GET /api/usuarios/evaluadores - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const evaluadores = pm.response.json();",
+              "",
+              "pm.test('Devuelve un arreglo de { id, nombre, email }', () => {",
+              "  pm.expect(evaluadores).to.be.an('array');",
+              "  evaluadores.forEach((e) => pm.expect(Object.keys(e).sort()).to.eql(['email', 'id', 'nombre']));",
+              "});",
+              "",
+              "pm.test('Nunca devuelve password_hash', () => {",
+              "  pm.expect(pm.response.text()).to.not.include('password_hash');",
+              "});",
+              "",
+              "// Si evaluador_id está vacío, se llena con el primero de la lista para la",
+              "// asignación que sigue. Si ya tiene valor no se toca: puede estar elegido a",
+              "// propósito (un evaluador que aún no esté asignado a solicitud_id).",
+              "if (!pm.collectionVariables.get('evaluador_id') && evaluadores.length > 0) {",
+              "  pm.collectionVariables.set('evaluador_id', evaluadores[0].id);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/usuarios/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "usuarios",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET /api/usuarios/evaluadores - Error (No es administrador)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 403 Forbidden', () => {",
+              "  pm.response.to.have.status(403);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/usuarios/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "usuarios",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET /api/usuarios/evaluadores - Error (Sin token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 401 Unauthorized', () => {",
+              "  pm.response.to.have.status(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/usuarios/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "usuarios",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
       "name": "POST /api/solicitudes/:id/evaluadores - Success",
       "event": [
         {

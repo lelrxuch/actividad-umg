@@ -1,5 +1,25 @@
 import * as usuarioService from '../services/usuario.service.js';
 
+/**
+ * GET /api/usuarios/evaluadores
+ * Solo administrador: la lista para asignar evaluadores a solicitudes.
+ *
+ * El JWT guarda el identificador en `sub`; la autorización espera `id`, igual
+ * que en solicitud.controller. Un error sin `status` es inesperado y su mensaje
+ * no sale al cliente.
+ */
+export async function listarEvaluadores(req, res) {
+  try {
+    const token = req.usuario || {};
+    res.json(await usuarioService.listarEvaluadores({ id: token.sub ?? token.id, rol: token.rol }));
+  } catch (error) {
+    if (!error.status) {
+      return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
+    res.status(error.status).json({ error: error.message });
+  }
+}
+
 export async function actualizarPerfil(req, res) {
   try {
     const { id } = req.params;

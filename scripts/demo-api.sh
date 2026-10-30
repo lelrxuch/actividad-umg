@@ -188,6 +188,26 @@ else
     TK_EV_SI=$(token "$EV_SI"); TK_EV_NO=$(token "$EV_NO"); TK_ADMIN=$(token "$ADMIN")
     ID_EV_SI=$(id_de "$EV_SI"); ID_EV_NO=$(id_de "$EV_NO"); ID_OTRO=$(id_de "$OTRO")
 
+    t "14a. Lista de evaluadores (GET /api/usuarios/evaluadores)"
+    EVALUADORES=$(curl -s "$API/api/usuarios/evaluadores" -H "Authorization: Bearer $TK_ADMIN")
+    comparar "la administradora pide la lista" "200" "$(codigo "$API/api/usuarios/evaluadores" -H "Authorization: Bearer $TK_ADMIN")"
+    # "Evaluador Ajeno" va antes que "Evaluador Asignado" en cualquier collation.
+    case "$EVALUADORES" in
+      *"$EV_NO"*"$EV_SI"*) ok "trae a los dos evaluadores nuevos, ordenados por nombre" ;;
+      *) mal "faltan evaluadores o no vienen por nombre: $EVALUADORES" ;;
+    esac
+    case "$EVALUADORES" in
+      *password_hash*|*'$2a$'*|*'$2b$'*) mal "la lista expone el hash de la contraseña" ;;
+      *) ok "sin password_hash" ;;
+    esac
+    case "$EVALUADORES" in
+      *"$DUENO"*|*"$ADMIN"*) mal "la lista incluye usuarios que no son evaluadores" ;;
+      *) ok "solo usuarios con rol evaluador" ;;
+    esac
+    comparar "un estudiante pide la lista" "403" "$(codigo "$API/api/usuarios/evaluadores" -H "Authorization: Bearer $TK_DUENO")"
+    comparar "un evaluador pide la lista"  "403" "$(codigo "$API/api/usuarios/evaluadores" -H "Authorization: Bearer $TK_EV_SI")"
+    comparar "sin sesión"                  "401" "$(codigo "$API/api/usuarios/evaluadores")"
+
     t "14b. Asignación de evaluadores (POST /api/solicitudes/:id/evaluadores)"
     asignar() {   # asignar <token> <solicitud> <evaluadorId>
       codigo -X POST "$API/api/solicitudes/$2/evaluadores" -H 'Content-Type: application/json' \
