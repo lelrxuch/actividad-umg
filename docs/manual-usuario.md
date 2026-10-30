@@ -5,9 +5,9 @@
 
 | | |
 |---|---|
-| **Dirigido a** | Estudiantes que solicitan una beca (secciones 1 a 11) y evaluadores del Ministerio (sección 12) |
-| **Versión del documento** | 1.1 |
-| **Fecha** | 29/10/2026 |
+| **Dirigido a** | Estudiantes que solicitan una beca (secciones 1 a 11), evaluadores (sección 12) y administradores del Ministerio (sección 13) |
+| **Versión del documento** | 1.2 |
+| **Fecha** | 30/10/2026 |
 
 Este manual explica cómo usar la plataforma desde el navegador. Para instalarla
 o configurarla, consulte el **Manual Técnico** (`docs/manual-tecnico.md`).
@@ -31,7 +31,8 @@ contra su base de datos, no maquetas.
 10. [Recuperar la contraseña](#10-recuperar-la-contraseña)
 11. [Mensajes frecuentes y qué hacer](#11-mensajes-frecuentes-y-qué-hacer)
 12. [Para evaluadores: revisar y dictaminar](#12-para-evaluadores-revisar-y-dictaminar)
-13. [Alcance de esta versión](#13-alcance-de-esta-versión)
+13. [Para administradores: asignar evaluadores](#13-para-administradores-asignar-evaluadores)
+14. [Alcance de esta versión](#14-alcance-de-esta-versión)
 
 ---
 
@@ -311,7 +312,8 @@ Si todavía no le asignaron ninguna, la bandeja lo indica:
 ![Bandeja sin solicitudes asignadas](manual-usuario/img/15-bandeja-vacia.png)
 
 Cada solicitud aparece como una tarjeta con su número, su estado, la modalidad
-de beca y el número de identificación del estudiante. Los botones de cada
+de beca, el número de identificación del estudiante y los documentos de su
+expediente. Los botones de cada
 tarjeta dependen del estado de la solicitud: la plataforma solo muestra las
 acciones que se pueden hacer en ese momento.
 
@@ -321,16 +323,21 @@ acciones que se pueden hacer en ese momento.
 | **En Evaluación** | **Aprobar** y **Rechazar** |
 | **Aprobada** o **Rechazada** | Ninguno: *Sin acciones pendientes* |
 
-<!-- PENDIENTE (Marco): cuando la bandeja muestre los documentos del expediente
-     (tarea 4 de Brayan), agregar aquí "12.3 Revisar el expediente", con captura
-     de la lista de documentos y de la descarga, y renumerar 12.3 y 12.4. -->
+### 12.3 Revisar el expediente
 
-### 12.3 Iniciar la evaluación
+En cada tarjeta, el recuadro **Expediente adjunto** lista los documentos que
+subió el estudiante, con su tipo y el nombre del archivo. Presione
+**Descargar** junto a cualquiera para bajarlo a su computadora y revisarlo.
 
-Una solicitud recién asignada está en **Enviada**. Presione **Iniciar
-Evaluación** para tomarla.
+![Solicitud asignada, con los documentos del expediente](manual-usuario/img/16-bandeja-enviada.png)
 
-![Solicitud asignada, en estado Enviada](manual-usuario/img/16-bandeja-enviada.png)
+Solo puede descargar los documentos de las solicitudes que le asignaron. El
+expediente es de solo lectura: no puede cambiar ni agregar documentos.
+
+### 12.4 Iniciar la evaluación
+
+Una solicitud recién asignada está en **Enviada**. Cuando vaya a revisarla,
+presione **Iniciar Evaluación** para tomarla.
 
 La solicitud pasa a **En Evaluación**, aparece la confirmación *Solicitud #…
 pasada a "En Evaluación"* y la tarjeta cambia a los botones del dictamen. El
@@ -338,7 +345,7 @@ estudiante ve el nuevo estado en **Mis solicitudes**.
 
 ![Solicitud en evaluación, con los botones del dictamen](manual-usuario/img/17-en-evaluacion.png)
 
-### 12.4 Dictaminar: aprobar o rechazar
+### 12.5 Dictaminar: aprobar o rechazar
 
 Cuando termine de revisar la solicitud, presione **Aprobar** o **Rechazar**.
 
@@ -355,16 +362,17 @@ El estudiante ve la resolución en **Mis solicitudes**:
 
 ![La resolución vista por el estudiante](manual-usuario/img/19-estudiante-aprobada.png)
 
-### 12.5 Qué puede y qué no puede hacer un evaluador
+### 12.6 Qué puede y qué no puede hacer un evaluador
 
 - Solo ve las solicitudes que **le asignaron**. Si intenta abrir otra, la
   plataforma responde *No tiene acceso a esta solicitud.*
 - Solo puede iniciar la evaluación de una solicitud **Enviada** y solo puede
   dictaminar una que esté **En Evaluación**. La plataforma rechaza cualquier
   otro orden.
-- No puede modificar el expediente del estudiante ni subir documentos.
+- Puede descargar los documentos de las solicitudes que le asignaron, pero no
+  modificar el expediente ni subir documentos.
 
-### 12.6 Mensajes para evaluadores
+### 12.7 Mensajes para evaluadores
 
 | Mensaje | Qué pasó | Qué hacer |
 |---|---|---|
@@ -373,28 +381,90 @@ El estudiante ve la resolución en **Mis solicitudes**:
 | *No está asignado como evaluador de esta solicitud.* | La solicitud no es de las suyas | Revise que trabaja con su cuenta, o pida la asignación |
 | *Token inválido o expirado* | Su sesión venció (dura una hora) | Cierre sesión y vuelva a entrar |
 
-<!-- PENDIENTE (Marco): cuando exista la pantalla de asignación (tarea 5 de
-     Brayan), agregar aquí "## 13. Para administradores: asignar evaluadores",
-     con capturas, y pasar "Alcance de esta versión" a la sección 14. -->
+---
+
+## 13. Para administradores: asignar evaluadores
+
+Esta sección es para el personal del Ministerio con rol de **administrador**. El
+administrador reparte las solicitudes enviadas entre los evaluadores: una
+solicitud solo llega a la bandeja de un evaluador cuando el administrador se la
+asigna.
+
+### 13.1 Su cuenta de administrador
+
+Como el de evaluador, el rol de administrador **no se elige al registrarse**: lo
+asigna el administrador técnico del sistema. Al iniciar sesión, la pantalla de
+inicio muestra dos enlaces que solo ve el administrador: **Bandeja del
+evaluador** y **Asignar evaluadores**.
+
+![Inicio de sesión de un administrador](manual-usuario/img/20-inicio-admin.png)
+
+### 13.2 Asignar un evaluador
+
+1. Elija **Asignar evaluadores**. Aparecen las solicitudes que esperan
+   revisión (en estado **Enviada** o **En Evaluación**), de la más antigua a
+   la más reciente.
+
+   ![Solicitudes que esperan un evaluador](manual-usuario/img/21-asignaciones.png)
+
+2. En la solicitud que quiere asignar, elija un evaluador en el selector. La
+   lista muestra el nombre y el correo de cada usuario con rol de evaluador.
+
+   ![Evaluador elegido en el selector](manual-usuario/img/22-asignar-elegido.png)
+
+3. Presione **Asignar**. Aparece la confirmación *Evaluador … asignado
+   correctamente.* y la solicitud ya aparece en la bandeja de ese evaluador.
+
+   ![Asignación confirmada](manual-usuario/img/23-asignado.png)
+
+La solicitud sigue en la lista después de asignarla: puede asignarle más de un
+evaluador. Si presiona **Asignar** sin elegir a nadie, la plataforma le pide
+*Seleccione un evaluador* y no hace nada.
+
+> **La pantalla no muestra quién está ya asignado a cada solicitud.** Si intenta
+> asignar a un evaluador que ya tiene esa solicitud, la plataforma se lo dice
+> (sección 13.4) y no la duplica.
+
+![Intento de asignar un evaluador que ya estaba asignado](manual-usuario/img/24-ya-asignado.png)
+
+### 13.3 Seguir las solicitudes en revisión
+
+El administrador también puede abrir la **Bandeja del evaluador**. Ahí ve todas
+las solicitudes en **Enviada** o **En Evaluación**, con sus documentos, pero
+**sin botones de acción**: evaluar y dictaminar le corresponden solo al
+evaluador asignado.
+
+![Bandeja vista por el administrador, sin acciones](manual-usuario/img/25-admin-bandeja.png)
+
+### 13.4 Mensajes para administradores
+
+| Mensaje | Qué pasó | Qué hacer |
+|---|---|---|
+| *Seleccione un evaluador* | Presionó **Asignar** sin elegir a nadie | Elija un evaluador en el selector |
+| *El usuario … ya está asignado como evaluador de la solicitud ….* | Ese evaluador ya tenía esa solicitud | Nada: la asignación ya existe. Si quiere otro evaluador, elija otro |
+| *No se asignan evaluadores a una solicitud en estado …: solo en Enviada o En Evaluación.* | La solicitud ya fue aprobada o rechazada, o sigue en Borrador | Nada: una solicitud resuelta no se reasigna |
+| *El usuario … no es evaluador.* | El usuario elegido perdió el rol de evaluador | Pida al administrador técnico que revise su rol |
+| *Solo un administrador puede asignar evaluadores.* | Su cuenta no tiene el rol de administrador | Pida al administrador técnico que le asigne el rol |
 
 ---
 
-## 13. Alcance de esta versión
+## 14. Alcance de esta versión
 
 **Lo que cubre este manual.** El recorrido completo del **estudiante**: crear la
 cuenta, ver convocatorias, iniciar una solicitud, armar el expediente, enviarlo
-con validación de identidad y consultar su estado. Y el del **evaluador**: ver
-las solicitudes asignadas, iniciar la evaluación y dictaminar.
+con validación de identidad y consultar su estado. El del **evaluador**: ver
+las solicitudes asignadas, revisar y descargar el expediente, iniciar la
+evaluación y dictaminar. Y el del **administrador**: asignar evaluadores y
+seguir las solicitudes en revisión.
 
 **Lo que todavía no tiene pantallas**, y por eso no se describe aquí:
 
-- **Evaluadores:** la bandeja todavía no muestra los documentos del expediente,
-  ni permite escribir observaciones en el dictamen. La tarjeta identifica al
-  estudiante por su número, no por su nombre.
-- **Administradores:** asignar evaluadores a una solicitud y crear, publicar y
-  cerrar convocatorias. La lógica existe en el sistema y se usa por la API;
-  falta la interfaz. Por eso, en esta versión, la asignación de un evaluador la
-  hace el administrador técnico, no desde el navegador.
+- **Evaluadores:** el dictamen no admite observaciones ni pide confirmación, y
+  la tarjeta identifica al estudiante por su número, no por su nombre.
+- **Administradores:** crear, publicar y cerrar convocatorias, y dar el rol de
+  evaluador o administrador a una cuenta. La lógica de convocatorias existe y
+  se usa por la API; los roles los asigna el administrador técnico. La pantalla
+  de asignación no muestra quién está ya asignado a cada solicitud.
 - **Comités, evaluación con puntajes, cupos y reportes:** fuera del alcance de
   esta entrega.
 - **Recuperación de contraseña:** incompleta (sección 10).
