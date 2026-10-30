@@ -213,6 +213,22 @@ Deben caer 10 pruebas. Si pasan todas, el control de acceso no está cubierto.
 
 El detalle completo de la estrategia está en el Plan de Pruebas.
 
+### 5.2 Integración continua
+
+`.github/workflows/ci.yml` corre en cada pull request hacia `develop` o `main`
+y en cada push a `develop`. Tiene dos jobs, en `ubuntu-latest` con Node 22:
+
+| Job | Qué hace |
+|---|---|
+| `backend` | Levanta un PostgreSQL 16 (`becas_db`), aplica `db/schema.sql`, corre `npm test`, arranca el backend con las variables de `.env.example` y ejecuta `scripts/demo-api.sh` contra él |
+| `frontend` | `npx vitest run`, `npx eslint src` y `npx vite build` |
+
+`demo-api.sh` sale con el número de verificaciones fallidas, así que una sola
+falla tumba el job. Es el único paso que ejecuta SQL de verdad: `npm test`
+mockea el repositorio. Si falla, el log del backend queda al final del job.
+
+Para reproducir una falla en local se corren los mismos comandos de la tabla.
+
 ---
 
 ## 6. La API
