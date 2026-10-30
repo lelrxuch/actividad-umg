@@ -402,4 +402,99 @@ después de cargarla entera en memoria.
 
 ---
 
+## 11. Datos de demostración
+
+El script `scripts/sembrar-demo.sh` deja la base lista para la defensa, sin
+tener que crear cuentas y convocatorias a mano.
+
+### 11.1 Qué crea
+
+- Una convocatoria **"Beca Demo Defensa"**: publicada, abierta desde el día
+  anterior, con cierre a 90 días y las tres modalidades (`nivel-medio`,
+  `universitaria`, `posgrado`).
+- Una cuenta de **estudiante**, "Ana María López García", cuyo nombre coincide
+  con el CUI de prueba `1234567890101`. El CUI se ingresa al enviar la solicitud,
+  no al registrarse.
+- Una cuenta de **evaluador** y una de **administrador**, con el rol puesto por
+  SQL.
+
+Las cuentas se crean mediante `POST /api/auth/register`, para que la contraseña
+quede cifrada por el backend. Los roles de evaluador y administrador se asignan
+por SQL, porque todavía no existe un endpoint para eso.
+
+### 11.2 Cómo correrlo
+
+Requisitos: backend levantado, `schema.sql` aplicado y `psql` disponible en el
+PATH. En Windows se corre desde Git Bash.
+
+```bash
+export DB_NAME=becas_db DB_USER=postgres DB_PASSWORD=<clave de PostgreSQL>
+bash scripts/sembrar-demo.sh
+```
+
+El script apunta por defecto a `http://localhost:4000`, igual que el backend. Si
+el backend corre en otro puerto, definir `API_URL`. Variables opcionales:
+`API_URL`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_NAME`, `DB_PASSWORD`,
+`PASS_DEMO` y `CONV_DIAS_CIERRE`.
+
+### 11.3 Se puede repetir
+
+El script se puede correr todas las veces que haga falta sin duplicar nada. Si
+una cuenta ya existe se omite, y si la convocatoria ya existe se reabre y se
+alarga su cierre. Conviene correrlo de nuevo unos días antes de la defensa.
+
+### 11.4 Cuentas de demostración
+
+Al terminar, el script imprime estas cuentas:
+
+| Rol | Correo | Contraseña |
+|---|---|---|
+| Estudiante | `ana.lopez@miumg.edu.gt` | `Demo12345!` |
+| Evaluador | `evaluador.demo@miumg.edu.gt` | `Demo12345!` |
+| Administrador | `admin.demo@miumg.edu.gt` | `Demo12345!` |
+
+Son cuentas de demostración y no deben usarse fuera de un entorno de pruebas.
+
+---
+
 *Última actualización: 22 de octubre de 2026*
+
+## Datos de demostración
+
+El script `scripts/sembrar-demo.sh` deja la base lista para la defensa.
+
+### Qué crea
+
+- Una convocatoria **"Beca Demo Defensa"**: publicada, abierta desde ayer, con cierre a 90 días y las tres modalidades (`nivel-medio`, `universitaria`, `posgrado`).
+- Una cuenta de **estudiante**, "Ana María López García", cuyo nombre coincide con el CUI de prueba `1234567890101`. El CUI se ingresa al enviar la solicitud, no al registrarse.
+- Una cuenta de **evaluador** y una de **administrador**, con el rol puesto por SQL.
+
+Las cuentas se crean mediante `POST /api/auth/register`, para que la contraseña quede cifrada por el backend.
+
+### Cómo correrlo
+
+Requisitos: backend levantado, `schema.sql` aplicado y `psql` disponible en el PATH.
+
+```bash
+export API_URL=http://localhost:4000
+export DB_NAME=becas_db DB_USER=postgres DB_PASSWORD=<clave de PostgreSQL>
+bash scripts/sembrar-demo.sh
+```
+
+Si el backend corre en el puerto `4000`, no hace falta definir `API_URL`: es el valor por defecto. Variables opcionales: `API_URL`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_NAME`, `DB_PASSWORD`, `PASS_DEMO`, `CONV_DIAS_CIERRE`.
+
+En Windows se corre desde Git Bash.
+
+### Se puede repetir
+
+El script se puede correr todas las veces que haga falta sin duplicar nada. Si una cuenta ya existe se omite, y si la convocatoria ya existe se reabre y se alarga su cierre. Conviene correrlo de nuevo unos días antes de la defensa.
+
+### Cuentas de demostración
+
+| Rol | Correo | Contraseña |
+|---|---|---|
+| Estudiante | `ana.lopez@miumg.edu.gt` | `Demo12345!` |
+| Evaluador | `evaluador.demo@miumg.edu.gt` | `Demo12345!` |
+| Administrador | `admin.demo@miumg.edu.gt` | `Demo12345!` |
+
+Son cuentas de demostración y no deben usarse fuera de un entorno de pruebas.
