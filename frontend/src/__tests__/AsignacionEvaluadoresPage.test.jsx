@@ -92,4 +92,38 @@ describe('AsignacionEvaluadoresPage', () => {
       expect(screen.getByText('La solicitud ya tiene un evaluador asignado')).toBeInTheDocument();
     });
   });
+
+  it('un estudiante o evaluador es redirigido a /dashboard', async () => {
+  localStorage.setItem('user', JSON.stringify({ nombre: 'Estudiante', rol: 'estudiante' }));
+
+  renderConRouter(<AsignacionEvaluadoresPage />);
+
+  await waitFor(() => {
+    expect(screen.queryByText('Asignación de Evaluadores')).not.toBeInTheDocument();
+  });
+});
+
+it('dar Asignar sin elegir evaluador muestra "Seleccione un evaluador" y no llama al backend', async () => {
+  solicitudService.listarAsignadas.mockResolvedValue([
+    { id: 101, estado: 'Enviada', tipo: 'pregrado' },
+  ]);
+  usuarioService.listarEvaluadores.mockResolvedValue([
+    { id: 5, nombre: 'Evaluador Juan', email: 'juan@test.com' },
+  ]);
+
+  renderConRouter(<AsignacionEvaluadoresPage />);
+
+  await waitFor(() => {
+    expect(screen.getByText('Solicitud #101')).toBeInTheDocument();
+  });
+
+  const boton = screen.getByRole('button', { name: 'Asignar' });
+  fireEvent.click(boton);
+
+  await waitFor(() => {
+    expect(screen.getByText('Seleccione un evaluador')).toBeInTheDocument();
+  });
+
+  expect(solicitudService.asignarEvaluador).not.toHaveBeenCalled();
+});
 });

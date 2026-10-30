@@ -103,4 +103,18 @@ describe('documentoService', () => {
     await expect(documentos.subirDocumento(42, 'dni', new File(['x'], 'a.pdf')))
       .rejects.toThrow('El archivo supera el límite de 5 MB.');
   });
+
+  it('descargarDocumento pide el archivo con responseType blob', async () => {
+  API.get.mockResolvedValue({ data: new Blob(['pdf-data']) });
+
+  // Mock global de URL.createObjectURL y revokeObjectURL para jsdom
+  window.URL.createObjectURL = vi.fn().mockReturnValue('blob:http://localhost/123');
+  window.URL.revokeObjectURL = vi.fn();
+
+  await documentos.descargarDocumento(15, 'expediente.pdf');
+
+  expect(API.get).toHaveBeenCalledWith('/documentos/15/descargar', {
+    responseType: 'blob',
+  });
+});
 });
