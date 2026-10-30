@@ -1,5 +1,4 @@
 // src/pages/DashboardPage.jsx
-// Página mínima a la que llega el usuario después de iniciar sesión.
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { theme } from '../styles/theme';
 
@@ -26,6 +25,9 @@ export const DashboardPage = () => {
     navigate('/login', { replace: true });
   };
 
+  const rolNormalizado = (usuario?.rol || '').toLowerCase();
+  const esEvaluadorOAdmin = ['evaluador', 'administrador', 'admin'].includes(rolNormalizado);
+
   return (
     <div style={styles.card}>
       <h2 style={styles.title}>Bienvenido{usuario?.nombre ? `, ${usuario.nombre}` : ''}</h2>
@@ -35,6 +37,9 @@ export const DashboardPage = () => {
       <div style={styles.links}>
         <Link to="/convocatorias" style={styles.link}>Convocatorias abiertas</Link>
         <Link to="/solicitudes" style={styles.link}>Mis solicitudes</Link>
+        {esEvaluadorOAdmin && (
+          <Link to="/evaluador" style={styles.link}>Bandeja del evaluador</Link>
+        )}
       </div>
 
       <button type="button" onClick={handleLogout} style={styles.button}>

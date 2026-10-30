@@ -8,6 +8,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ConvocatoriasPage } from './pages/ConvocatoriasPage';
 import { SolicitudPage } from './pages/SolicitudPage';
 import { MisSolicitudesPage } from './pages/MisSolicitudesPage';
+import { EvaluadorPage } from './pages/EvaluadorPage';
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/registro" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/evaluador" element={<EvaluadorPage />} />
         </Route>
       </Routes>
     </Router>

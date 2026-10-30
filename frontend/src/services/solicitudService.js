@@ -56,3 +56,46 @@ export const enviarSolicitud = async (id, cui) => {
     throw errorDeApi(error, 'No se pudo enviar la solicitud');
   }
 };
+
+/**
+ * Pasa una solicitud de estado 'Enviada' a 'En Evaluación'.
+ *
+ * @param {number|string} id
+ */
+export const evaluarSolicitud = async (id) => {
+  try {
+    const respuesta = await API.post(`/solicitudes/${id}/evaluar`);
+    return respuesta.data;
+  } catch (error) {
+    throw errorDeApi(error, 'No se pudo pasar la solicitud a evaluación');
+  }
+};
+
+/**
+ * Dictamina una solicitud en estado 'En Evaluación' como Aprobada o Rechazada.
+ *
+ * @param {number|string} id
+ * @param {boolean} aprobado
+ * @param {string} [observaciones]
+ */
+export const dictaminarSolicitud = async (id, aprobado, observaciones = '') => {
+  try {
+    const respuesta = await API.post(`/solicitudes/${id}/dictamen`, { aprobado, observaciones });
+    return respuesta.data;
+  } catch (error) {
+    throw errorDeApi(error, 'No se pudo dictaminar la solicitud');
+  }
+};
+
+/**
+ * Las solicitudes asignadas al evaluador o todas si es administrador.
+ * GET /api/solicitudes/asignadas
+ */
+export const listarAsignadas = async () => {
+  try {
+    const respuesta = await API.get('/solicitudes/asignadas');
+    return Array.isArray(respuesta.data) ? respuesta.data : [];
+  } catch (error) {
+    throw errorDeApi(error, 'No se pudieron cargar las solicitudes asignadas');
+  }
+};
