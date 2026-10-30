@@ -17,6 +17,24 @@ export async function findById(id) {
 }
 
 /**
+ * Los usuarios de un rol, ordenados por nombre.
+ *
+ * Las columnas se nombran una por una, nunca `SELECT *`: esta lista sale tal
+ * cual al cliente y no puede arrastrar password_hash ni el token de
+ * recuperación.
+ *
+ * @param {string} rol
+ * @returns {Promise<Array<{id: number, nombre: string, email: string}>>}
+ */
+export async function listarPorRol(rol) {
+  const result = await pool.query(
+    'SELECT id, nombre, email FROM usuarios WHERE rol = $1 ORDER BY nombre ASC, id ASC',
+    [rol]
+  );
+  return result.rows;
+}
+
+/**
  * Inserta un usuario nuevo.
  *
  * `nombre` es NOT NULL en el esquema, por eso es obligatorio aquí. No devuelve

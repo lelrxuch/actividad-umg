@@ -217,7 +217,7 @@ El detalle completo de la estrategia está en el Plan de Pruebas.
 
 ## 6. La API
 
-28 endpoints. Los marcados **público** no requieren token; los demás esperan la
+29 endpoints. Los marcados **público** no requieren token; los demás esperan la
 cabecera `Authorization: Bearer <token>`.
 
 ### Autenticación
@@ -230,6 +230,7 @@ cabecera `Authorization: Bearer <token>`.
 | POST | `/api/auth/forgot-password` | público |
 | POST | `/api/auth/reset-password` | público |
 | PUT | `/api/usuarios/:id/perfil` | sesión |
+| GET | `/api/usuarios/evaluadores` | administrador — `[{ id, nombre, email }]` de los evaluadores, por nombre |
 
 ### Convocatorias
 
@@ -270,7 +271,10 @@ cabecera `Authorization: Bearer <token>`.
 
 ### Asignación de evaluadores
 
-`POST /api/solicitudes/:id/evaluadores` con cuerpo `{ "evaluadorId": 77 }`.
+`POST /api/solicitudes/:id/evaluadores` con cuerpo `{ "evaluadorId": 77 }`. Los
+ids de evaluador salen de `GET /api/usuarios/evaluadores`, que solo responde al
+administrador (403 a cualquier otro rol, 401 sin sesión) y devuelve
+`[{ id, nombre, email }]` ordenado por nombre, nunca `password_hash`.
 Responde `201` con `{ solicitudId, evaluador: { id, nombre, email } }`. Las
 comprobaciones van en este orden y la primera que falla decide la respuesta:
 

@@ -62,22 +62,24 @@ export function bandejaDe(usuario) {
 }
 
 /**
- * Solo un administrador asigna evaluadores (POST /api/solicitudes/:id/evaluadores).
+ * Solo un administrador asigna evaluadores (POST /api/solicitudes/:id/evaluadores)
+ * y los lista (GET /api/usuarios/evaluadores).
  *
  * No recibe la solicitud a propósito: se llama ANTES de cargarla, para que a
  * quien no es administrador se le niegue con 403 y no se entere, por un 404,
  * de qué ids existen.
  *
  * @param {{id: *, rol: string}} [usuario]
+ * @param {string} [mensaje] Motivo del 403, según la acción.
  * @throws {Error & { status: number }} 403 si no es administrador.
  */
-export function exigirAdministrador(usuario) {
+export function exigirAdministrador(usuario, mensaje = 'Solo un administrador puede asignar evaluadores.') {
   if (!usuario || usuario.id === undefined || usuario.id === null) {
     denegar('No se identificó a quien solicita la acción.');
   }
 
   if (usuario.rol !== 'administrador') {
-    denegar('Solo un administrador puede asignar evaluadores.');
+    denegar(mensaje);
   }
 }
 
