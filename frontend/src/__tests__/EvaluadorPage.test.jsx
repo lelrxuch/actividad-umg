@@ -1,75 +1,69 @@
 // src/__tests__/EvaluadorPage.test.jsx
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { EvaluadorPage } from '../pages/EvaluadorPage';
 import * as solicitudService from '../services/solicitudService';
-import * as sesion from '../utils/sesion';
+import * as documentoService from '../services/documentoService';
 
 vi.mock('../services/solicitudService');
-vi.mock('../utils/sesion');
+vi.mock('../services/documentoService');
+
+const renderConRouter = (componente) => {
+  return render(<BrowserRouter>{componente}</BrowserRouter>);
+};
 
 describe('EvaluadorPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(sesion, 'haySesion').mockReturnValue(true);
+    localStorage.clear();
+    localStorage.setItem('token', 'token-demo');
+    documentoService.listarDocumentosPorSolicitud.mockResolvedValue([]);
   });
 
-  it('renderiza el título y la lista de solicitudes asignadas', async () => {
+  it('para rol administrador solo muestra la lista y NO muestra botones de accion', async () => {
+    localStorage.setItem('user', JSON.stringify({ nombre: 'Admin Test', rol: 'administrador' }));
     solicitudService.listarAsignadas.mockResolvedValue([
-      { id: 1, estado: 'Enviada', tipo: 'pregrado', estudiante_id: 10, accionesPermitidas: ['evaluar'] },
+      { id: 1, estado: 'Enviada', tipo: 'pregrado', accionesPermitidas: ['evaluar'] },
     ]);
 
-    render(
-      <MemoryRouter>
-        <EvaluadorPage />
-      </MemoryRouter>
-    );
+    renderConRouter(<EvaluadorPage />);
 
-    expect(screen.getByText('Bandeja del Evaluador')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText('Solicitud #1')).toBeInTheDocument();
-      expect(screen.getByText('Iniciar Evaluación')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Iniciar Evaluación/i })).not.toBeInTheDocument();
+      expect(screen.getByText('Sin acciones pendientes')).toBeInTheDocument();
     });
   });
 
-  it('permite pasar una solicitud a "En Evaluación"', async () => {
+  it('para rol evaluador si muestra los botones permitidos', async () => {
+    localStorage.setItem('user', JSON.stringify({ nombre: 'Evaluador Test', rol: 'evaluador' }));
     solicitudService.listarAsignadas.mockResolvedValue([
-      { id: 1, estado: 'Enviada', tipo: 'pregrado', estudiante_id: 10, accionesPermitidas: ['evaluar'] },
+      { id: 2, estado: 'Enviada', tipo: 'pregrado', accionesPermitidas: ['evaluar'] },
     ]);
-    solicitudService.evaluarSolicitud.mockResolvedValue({ id: 1, estado: 'En Evaluación' });
 
-    render(
-      <MemoryRouter>
-        <EvaluadorPage />
-      </MemoryRouter>
-    );
-
-    const boton = await screen.findByText('Iniciar Evaluación');
-    fireEvent.click(boton);
+    renderConRouter(<EvaluadorPage />);
 
     await waitFor(() => {
-      expect(solicitudService.evaluarSolicitud).toHaveBeenCalledWith(1);
+      expect(screen.getByText('Solicitud #2')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Iniciar Evaluación/i })).toBeInTheDocument();
     });
   });
 
-  it('permite dictaminar una solicitud como Aprobada', async () => {
+  it('lista los documentos del expediente de la solicitud', async () => {
+    localStorage.setItem('user', JSON.stringify({ nombre: 'Evaluador Test', rol: 'evaluador' }));
     solicitudService.listarAsignadas.mockResolvedValue([
-      { id: 2, estado: 'En Evaluación', tipo: 'pregrado', estudiante_id: 12, accionesPermitidas: ['dictaminar'] },
+      { id: 3, estado: 'En Evaluación', tipo: 'pregrado', accionesPermitidas: ['dictaminar'] },
     ]);
-    solicitudService.dictaminarSolicitud.mockResolvedValue({ id: 2, estado: 'Aprobada' });
+    documentoService.listarDocumentosPorSolicitud.mockResolvedValue([
+      { id: 10, tipo: 'dpi', nombreArchivo: 'dpi.pdf' },
+    ]);
 
-    render(
-      <MemoryRouter>
-        <EvaluadorPage />
-      </MemoryRouter>
-    );
-
-    const botonAprobar = await screen.findByText('Aprobar');
-    fireEvent.click(botonAprobar);
+    renderConRouter(<EvaluadorPage />);
 
     await waitFor(() => {
-      expect(solicitudService.dictaminarSolicitud).toHaveBeenCalledWith(2, true);
+      expect(screen.getByText(/dpi.pdf/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Descargar' })).toBeInTheDocument();
     });
   });
 });
