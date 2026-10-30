@@ -2,38 +2,65 @@
 import API from './api';
 import { errorDeApi } from './errores';
 
-/** Documentos ya subidos a una solicitud. Siempre devuelve un arreglo. */
+/**
+ * Lista los documentos adjuntos de una solicitud.
+ * GET /api/documentos/solicitud/:solicitudId
+ */
 export const listarDocumentos = async (solicitudId) => {
   try {
     const respuesta = await API.get(`/documentos/solicitud/${solicitudId}`);
-    return respuesta.data?.documentos ?? [];
+    return respuesta.data.documentos || respuesta.data || [];
   } catch (error) {
-    throw errorDeApi(error, 'No se pudieron cargar los documentos');
+    throw errorDeApi(error, 'No se pudieron listar los documentos de la solicitud');
   }
 };
 
 /**
- * Sube un documento al expediente.
- *
- * El campo del archivo se llama `archivo`: es el que espera `multer` en el
- * backend. El tamaño (5 MB) y las extensiones (pdf, jpg, png) los valida el
- * backend; el cliente solo los anuncia para que el estudiante no pierda un
- * intento.
- *
- * @param {number|string} solicitudId
- * @param {string} tipo dni, titulo o carta.
- * @param {File} archivo
+ * Alias para mantener compatibilidad con la vista de evaluación.
+ */
+export const listarDocumentosPorSolicitud = listarDocumentos;
+
+/**
+ * Sube un archivo adjunto a una solicitud existente.
+ * POST /api/documentos
  */
 export const subirDocumento = async (solicitudId, tipo, archivo) => {
-  const formulario = new FormData();
-  formulario.append('solicitudId', String(solicitudId));
-  formulario.append('tipo', tipo);
-  formulario.append('archivo', archivo);
-
   try {
-    const respuesta = await API.post('/documentos', formulario);
-    return respuesta.data?.documento;
+    const formData = new FormData();
+    formData.append('solicitudId', solicitudId);
+    formData.append('tipo', tipo);
+    formData.append('archivo', archivo);
+
+    const respuesta = await API.post('/documentos', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return respuesta.data.documento !== undefined ? respuesta.data.documento : respuesta.data;
   } catch (error) {
     throw errorDeApi(error, 'No se pudo subir el documento');
+  }
+};
+
+/**
+ * Descarga un documento por su ID solicitando un Blob con cabecera Authorization.
+ * GET /api/documentos/:id/descargar
+ */
+export const descargarDocumento = async (documentoId, nombreArchivo = 'documento.pdf') => {
+  try {
+    const respuesta = await API.get(`/documentos/${documentoId}/descargar`, {
+      responseType: 'blob',
+    });
+
+    const url = window.URL.createObjectURL(new Blob([respuesta.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', nombreArchivo);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    throw errorDeApi(error, 'No se pudo descargar el documento');
   }
 };
