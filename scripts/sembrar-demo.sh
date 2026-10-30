@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # ---------- Configuración (se puede sobreescribir con variables de entorno) ----------
-API="${API_URL:-http://localhost:3000}"
+API="${API_URL:-http://localhost:4000}"
 export PGHOST="${DB_HOST:-localhost}"
 export PGPORT="${DB_PORT:-5432}"
 export PGUSER="${DB_USER:-postgres}"
