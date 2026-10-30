@@ -123,7 +123,7 @@ Justificación de cada uno: `docs/justificacion-patrones.md`.
 | No hay Integración Continua | ANEXO 6 §6.1 |
 | No hay entorno de Staging, y el punto 7 del DoD no se puede cumplir | ANEXO 6 §4.4 |
 | `main` está 69 commits detrás de `develop` | ANEXO 6 §7.2 |
-| `npm audit`: 5 vulnerabilidades en el backend (1 crítica, 2 altas, 2 moderadas) | ANEXO 6 §10 |
+| `npm audit`: **0 vulnerabilidades** en backend y frontend desde `fix/npm-audit` (29/10/2026), con `npm audit fix` sin `--force` y sin cambios de versión mayor en dependencias directas. Antes: backend 1 crítica, 2 altas y 1 moderada; frontend 5 altas y 2 moderadas | ANEXO 6 §10 |
 | ESLint solo en el frontend | ANEXO 6 §4.3 |
 | JWT sin revocación | ANEXO 5 §2.2 trade-off 5 |
 | **Crítico.** Con `NODE_ENV` distinto de `production` (el valor por defecto del `.env.example` es `development`), `POST /api/auth/forgot-password` devuelve el token de recuperación en la respuesta (`tokenDebug`). Cualquiera puede cambiar la contraseña de cualquier cuenta conociendo solo el correo, y saber qué correos están registrados. Verificado contra la base real el 27/10/2026 | **Corregido** en `fix/forgot-password-sin-token`: el service ya no devuelve el token, la respuesta es idéntica exista o no la cuenta y el token solo sale en la consola del servidor fuera de producción. Prueba de regresión en `password.controller.forgot.test.js` |
