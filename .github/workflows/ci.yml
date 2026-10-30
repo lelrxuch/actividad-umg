@@ -1,0 +1,134 @@
+# Integración continua (ANEXO 6 §6.1).
+#
+# Dos jobs independientes:
+#   backend:  pruebas unitarias y el recorrido de extremo a extremo de
+#             scripts/demo-api.sh contra un PostgreSQL 16 real. Es el único
+#             paso que ejecuta SQL de verdad: `npm test` mockea el repositorio.
+#   frontend: pruebas, lint y build.
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+# Un push nuevo al mismo PR cancela la corrida anterior, que ya no sirve.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: becas_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d becas_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Las de backend/.env.example, con valores de prueba. Las variables de
+      # entorno ganan sobre el .env: dotenv no pisa las que ya existen.
+      PORT: 4000
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: becas_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: secreto-solo-para-ci
+      # Para psql, tanto al aplicar el esquema como dentro de demo-api.sh.
+      PGPASSWORD: postgres
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Aplicar el esquema
+        run: psql -h localhost -U postgres -d becas_db -v ON_ERROR_STOP=1 -f db/schema.sql
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Pruebas unitarias
+        run: npm test
+
+      - name: Levantar el backend
+        run: |
+          cp .env.example .env
+          nohup node src/index.js > "$RUNNER_TEMP/backend.log" 2>&1 &
+          # /health responde "db":"connected" solo cuando la base contesta.
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:4000/health | grep -q '"db":"connected"'; then
+              echo "Backend arriba."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "El backend no respondió en 30 s:"
+          cat "$RUNNER_TEMP/backend.log"
+          exit 1
+
+      - name: Recorrido de extremo a extremo (scripts/demo-api.sh)
+        working-directory: .
+        env:
+          API: http://localhost:4000
+          PSQL: psql -h localhost -U postgres -d becas_db
+        # El script sale con el número de verificaciones fallidas.
+        run: bash scripts/demo-api.sh
+
+      - name: Log del backend
+        if: always()
+        run: cat "$RUNNER_TEMP/backend.log" || true
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Pruebas
+        run: npx vitest run
+
+      - name: Lint
+        run: npx eslint src
+
+      - name: Build
+        run: npx vite build
