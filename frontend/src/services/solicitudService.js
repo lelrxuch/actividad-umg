@@ -99,3 +99,16 @@ export const listarAsignadas = async () => {
     throw errorDeApi(error, 'No se pudieron cargar las solicitudes asignadas');
   }
 };
+
+/**
+ * Asigna un evaluador a una solicitud.
+ * POST /api/solicitudes/:id/evaluadores
+ */
+export const asignarEvaluador = async (solicitudId, evaluadorId) => {
+  try {
+    const respuesta = await API.post(`/solicitudes/${solicitudId}/evaluadores`, { evaluadorId });
+    return respuesta.data;
+  } catch (error) {
+    throw errorDeApi(error, 'No se pudo asignar el evaluador');
+  }
+};

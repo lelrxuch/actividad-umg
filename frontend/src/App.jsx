@@ -9,6 +9,7 @@ import { ConvocatoriasPage } from './pages/ConvocatoriasPage';
 import { SolicitudPage } from './pages/SolicitudPage';
 import { MisSolicitudesPage } from './pages/MisSolicitudesPage';
 import { EvaluadorPage } from './pages/EvaluadorPage';
+import { AsignacionEvaluadoresPage } from './pages/AsignacionEvaluadoresPage';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/evaluador" element={<EvaluadorPage />} />
+          <Route path="/admin/asignaciones" element={<AsignacionEvaluadoresPage />} />
         </Route>
       </Routes>
     </Router>

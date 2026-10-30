@@ -27,6 +27,7 @@ export const DashboardPage = () => {
 
   const rolNormalizado = (usuario?.rol || '').toLowerCase();
   const esEvaluadorOAdmin = ['evaluador', 'administrador', 'admin'].includes(rolNormalizado);
+  const esAdmin = ['administrador', 'admin'].includes(rolNormalizado);
 
   return (
     <div style={styles.card}>
@@ -39,6 +40,9 @@ export const DashboardPage = () => {
         <Link to="/solicitudes" style={styles.link}>Mis solicitudes</Link>
         {esEvaluadorOAdmin && (
           <Link to="/evaluador" style={styles.link}>Bandeja del evaluador</Link>
+        )}
+        {esAdmin && (
+          <Link to="/admin/asignaciones" style={styles.link}>Asignar evaluadores</Link>
         )}
       </div>
 
