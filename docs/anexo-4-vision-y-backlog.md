@@ -354,8 +354,10 @@ Criterios de aceptación:
 - La decisión es **irreversible** *(ya garantizado: `Aprobada` y `Rechazada` son
   estados finales)*
 - Si el envío de la notificación falla, **se registra y la transición se
-  mantiene**: un aviso no puede deshacer un cambio de estado ya persistido *(ya
-  implementado)*
+  mantiene**: un aviso no puede deshacer un cambio de estado ya persistido
+  *(implementado el 30/10/2026: antes se avisaba antes de guardar y ningún
+  flujo conectaba el aviso; ver el análisis de impacto de los requerimientos
+  nuevos)*
 - Solo un evaluador asignado o un administrador puede dictaminar *(ya
   implementado)*
 

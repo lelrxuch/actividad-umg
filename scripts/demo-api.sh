@@ -269,6 +269,17 @@ else
       -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_DUENO" -d "{\"cui\":\"$CUI_ANA\"}")"
     comparar "asignar un evaluador a una Aprobada" "409" "$(asignar "$TK_ADMIN" "$ID_SOL" "$ID_EV_NO")"
     curl -s "$API/api/solicitudes/$ID_SOL" -H "Authorization: Bearer $TK_DUENO" | sed 's/^/   /'
+
+    t "15b. Notificaciones al estudiante (GET /api/notificaciones)"
+    echo "   Cada cambio de estado de su solicitud le dejó un aviso, y solo a ella:"
+    echo "   Borrador → Enviada → En Evaluación → Aprobada son 3 avisos."
+    avisos_de() {  # avisos_de <token>: cuántos avisos de $ID_SOL ve ese usuario
+      curl -s "$API/api/notificaciones" -H "Authorization: Bearer $1" \
+        | grep -o "\"solicitudId\":$ID_SOL[,}]" | wc -l | tr -d ' '
+    }
+    comparar "la dueña ve los avisos de su solicitud" "3" "$(avisos_de "$TK_DUENO")"
+    comparar "el evaluador no ve los avisos de ella"  "0" "$(avisos_de "$TK_EV_SI")"
+    comparar "sin sesión no hay avisos"               "401" "$(codigo "$API/api/notificaciones")"
   fi
 fi
 

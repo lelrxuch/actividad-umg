@@ -27,6 +27,14 @@ vi.mock('../repositories/usuario.repository.js', () => ({
   findById: vi.fn(async (id) => ({ id, nombre: 'Ana López' })),
 }));
 
+// Toda transición registra el aviso al estudiante (requerimiento de
+// notificaciones). Se mockea como cualquier otro repositorio: esta suite no
+// ejecuta SQL.
+vi.mock('../repositories/notificacion.repository.js', () => ({
+  registrar: vi.fn(async (aviso) => ({ id: 1, ...aviso })),
+  marcarResultado: vi.fn(async () => {}),
+}));
+
 /** CUI que el simulador de RENAP conoce: ANA MARIA LOPEZ GARCIA. */
 const CUI_ANA = '1234567890101';
 

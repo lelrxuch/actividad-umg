@@ -38,6 +38,7 @@ export const DashboardPage = () => {
       <div style={styles.links}>
         <Link to="/convocatorias" style={styles.link}>Convocatorias abiertas</Link>
         <Link to="/solicitudes" style={styles.link}>Mis solicitudes</Link>
+        <Link to="/notificaciones" style={styles.link}>Mis notificaciones</Link>
         {esEvaluadorOAdmin && (
           <Link to="/evaluador" style={styles.link}>Bandeja del evaluador</Link>
         )}

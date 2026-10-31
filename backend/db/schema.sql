@@ -187,3 +187,32 @@ ALTER TABLE solicitudes
 
 CREATE INDEX IF NOT EXISTS idx_solicitudes_convocatoria
     ON solicitudes (convocatoria_id);
+
+-- ---------------------------------------------------------------------------
+-- Notificaciones al estudiante por cambio de estado (requerimiento nuevo del
+-- Product Owner, 30/10/2026).
+--
+-- Cada fila es UN aviso por UN canal: registra el evento que lo originó (el
+-- cambio de estado anterior → nuevo), a quién va dirigido, y si se entregó o
+-- con qué error falló. La fila se crea ANTES de intentar la entrega, así que un
+-- canal caído deja rastro en vez de perder el evento.
+--
+-- La notificación se genera después de guardar el cambio de estado, nunca
+-- antes: un aviso que falla no puede deshacer una transición ya persistida.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS notificaciones (
+    id              SERIAL PRIMARY KEY,
+    solicitud_id    INTEGER NOT NULL REFERENCES solicitudes(id) ON DELETE CASCADE,
+    destinatario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    estado_anterior VARCHAR(30) NOT NULL,
+    estado_nuevo    VARCHAR(30) NOT NULL,
+    canal           VARCHAR(20) NOT NULL,
+    mensaje         TEXT NOT NULL,
+    enviada         BOOLEAN NOT NULL DEFAULT false,
+    error           TEXT,
+    leida_en        TIMESTAMPTZ,
+    creado_en       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notificaciones_destinatario
+    ON notificaciones (destinatario_id, creado_en DESC);

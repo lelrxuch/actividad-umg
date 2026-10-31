@@ -27,13 +27,28 @@ export class Solicitud {
   /** @type {Array<{de: string, a: string, fecha: Date}>} */
   #historial = [];
 
+  /** @type {boolean} Si los avisos esperan a {@link publicarNotificaciones}. */
+  #notificacionDiferida;
+
+  /** @type {Array<{mensaje: string, contexto: object}>} Avisos aún no publicados. */
+  #pendientes = [];
+
   /**
    * @param {object} datos
    * @param {number|string} [datos.id] Identificador de la solicitud.
    * @param {string} [datos.estudiante] Nombre o correo del solicitante.
    * @param {IEstadoSolicitud} [datos.estado] Estado inicial; por defecto Borrador.
+   * @param {boolean} [datos.notificacionDiferida] Si es `true`, un cambio de
+   *   estado no avisa en el momento: guarda el aviso hasta que se llame a
+   *   {@link publicarNotificaciones}. Es lo que usa el service, para avisar
+   *   solo DESPUÉS de haber guardado el estado nuevo en la base de datos.
    */
-  constructor({ id = null, estudiante = null, estado = new EstadoBorrador() } = {}) {
+  constructor({
+    id = null,
+    estudiante = null,
+    estado = new EstadoBorrador(),
+    notificacionDiferida = false,
+  } = {}) {
     if (!(estado instanceof IEstadoSolicitud)) {
       throw new TypeError('El estado inicial debe ser una instancia de IEstadoSolicitud.');
     }
@@ -41,6 +56,7 @@ export class Solicitud {
     this.id = id;
     this.estudiante = estudiante;
     this.#estado = estado;
+    this.#notificacionDiferida = notificacionDiferida;
   }
 
   /** @returns {IEstadoSolicitud} Objeto estado actual. */
@@ -110,18 +126,50 @@ export class Solicitud {
    * de estado: que el servidor de correo esté caído no puede impedir que una
    * beca quede aprobada. El error se registra y el proceso continúa.
    *
+   * Vale para los dos tipos de falla. Un observer síncrono que lanza se atrapa
+   * con `try/catch`; uno asíncrono (un envío de correo real devuelve una
+   * promesa) falla DESPUÉS de que el `try` terminó, así que su rechazo se
+   * atrapa aparte. Sin eso, el error escaparía como un rechazo no manejado.
+   *
    * @param {string} mensaje
    * @param {object} [contexto]
+   * @returns {Promise<void>} Se resuelve cuando todos los observers
+   *   terminaron. Nunca se rechaza.
    */
   notificar(mensaje, contexto = {}) {
+    const entregas = [];
+
     for (const observer of this.#observers) {
-      try {
-        observer.actualizar(mensaje, contexto);
-      } catch (error) {
+      const registrarFalla = (error) => {
         console.error(
-          `[solicitud ${this.id}] el observer ${observer.constructor.name} falló: ${error.message}`
+          `[solicitud ${this.id}] el observer ${observer.constructor.name} falló: ${error?.message ?? error}`
         );
+      };
+
+      try {
+        const resultado = observer.actualizar(mensaje, contexto);
+        if (resultado && typeof resultado.then === 'function') {
+          entregas.push(Promise.resolve(resultado).catch(registrarFalla));
+        }
+      } catch (error) {
+        registrarFalla(error);
       }
+    }
+
+    return Promise.all(entregas).then(() => undefined);
+  }
+
+  /**
+   * Publica los avisos que una solicitud con notificación diferida guardó al
+   * cambiar de estado, en el orden en que ocurrieron. El service la llama
+   * después de persistir el estado nuevo.
+   *
+   * @returns {Promise<void>} Nunca se rechaza: ver {@link notificar}.
+   */
+  async publicarNotificaciones() {
+    const pendientes = this.#pendientes.splice(0);
+    for (const { mensaje, contexto } of pendientes) {
+      await this.notificar(mensaje, contexto);
     }
   }
 
@@ -147,10 +195,14 @@ export class Solicitud {
     const transicion = { de: estadoAnterior, a: nuevoEstado.nombre, fecha: new Date() };
     this.#historial.push(transicion);
 
-    this.notificar(
-      `Su solicitud de beca cambió de "${estadoAnterior}" a "${nuevoEstado.nombre}".`,
-      { solicitudId: this.id, estadoAnterior, estadoNuevo: nuevoEstado.nombre }
-    );
+    const mensaje = `Su solicitud de beca cambió de "${estadoAnterior}" a "${nuevoEstado.nombre}".`;
+    const contexto = { solicitudId: this.id, estadoAnterior, estadoNuevo: nuevoEstado.nombre };
+
+    if (this.#notificacionDiferida) {
+      this.#pendientes.push({ mensaje, contexto });
+    } else {
+      this.notificar(mensaje, contexto);
+    }
   }
 
   /**
