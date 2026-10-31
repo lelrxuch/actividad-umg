@@ -11,6 +11,8 @@ import {
   enviar,
   evaluar,
   dictaminar,
+  autorizarSolicitud,
+  establecerMonto,
 } from '../controllers/solicitud.controller.js';
 import { autenticado } from '../middlewares/auth.middleware.js';
 
@@ -31,5 +33,9 @@ router.post('/:id/evaluadores', autenticado, asignarEvaluador);
 router.post('/:id/enviar', autenticado, enviar);
 router.post('/:id/evaluar', autenticado, evaluar);
 router.post('/:id/dictamen', autenticado, dictaminar);
+// Doble aprobación de mayor monto (30/10/2026). Quién puede, lo decide
+// solicitud.autorizacion.
+router.post('/:id/autorizacion', autenticado, autorizarSolicitud);
+router.patch('/:id/monto', autenticado, establecerMonto);
 
 export default router;

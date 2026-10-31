@@ -3,12 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render as renderBase, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { SolicitudPage } from '../pages/SolicitudPage';
-import { obtenerSolicitud, enviarSolicitud } from '../services/solicitudService';
+import { obtenerSolicitud, enviarSolicitud, establecerMonto } from '../services/solicitudService';
 import { listarDocumentos, subirDocumento } from '../services/documentoService';
 
 vi.mock('../services/solicitudService', () => ({
   obtenerSolicitud: vi.fn(),
   enviarSolicitud: vi.fn(),
+  establecerMonto: vi.fn(),
 }));
 vi.mock('../services/documentoService', () => ({
   listarDocumentos: vi.fn(),
@@ -39,6 +40,8 @@ function solicitud(extra = {}) {
   return {
     id: 42,
     estado: 'Borrador',
+    montoSolicitado: 5000,
+    requiereDobleAprobacion: false,
     tipo: 'universitaria',
     documentosRequeridos: ['dni', 'titulo', 'carta'],
     accionesPermitidas: ['enviar'],
@@ -230,5 +233,71 @@ describe('SolicitudPage', () => {
     render();
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/no tiene acceso/i);
+  });
+});
+
+describe('SolicitudPage — monto y doble aprobación', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.setItem('token', 'token-demo');
+    listarDocumentos.mockResolvedValue([]);
+  });
+
+  it('sin monto guardado no deja enviar y dice por qué', async () => {
+    obtenerSolicitud.mockResolvedValue(solicitud({ montoSolicitado: null }));
+    render();
+
+    fireEvent.change(await screen.findByLabelText(/cui/i), { target: { value: CUI_ANA } });
+
+    expect(screen.getByRole('button', { name: /enviar a evaluación/i })).toBeDisabled();
+    expect(screen.getByText('Guarde primero el monto que solicita.')).toBeInTheDocument();
+  });
+
+  it('con Q10,000 o menos no habla de una segunda aprobación', async () => {
+    obtenerSolicitud.mockResolvedValue(solicitud({ montoSolicitado: 10000, requiereDobleAprobacion: false }));
+    render();
+
+    await screen.findByLabelText('Monto en quetzales');
+    expect(screen.queryByText(/autoridad autorizadora/)).not.toBeInTheDocument();
+  });
+
+  it('guarda el monto y, si pasa de Q10,000, avisa que necesita la autorización', async () => {
+    obtenerSolicitud.mockResolvedValue(solicitud({ montoSolicitado: null }));
+    establecerMonto.mockResolvedValue(solicitud({ montoSolicitado: 15000, requiereDobleAprobacion: true }));
+    render();
+
+    fireEvent.change(await screen.findByLabelText('Monto en quetzales'), { target: { value: '15000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar monto' }));
+
+    await waitFor(() => expect(establecerMonto).toHaveBeenCalledWith('42', '15000'));
+    expect(await screen.findByText(/la debe aprobar la autoridad autorizadora/)).toBeInTheDocument();
+  });
+
+  it('el error del backend al guardar el monto se muestra como error', async () => {
+    obtenerSolicitud.mockResolvedValue(solicitud({ montoSolicitado: null }));
+    establecerMonto.mockRejectedValue(new Error('El monto debe ser un número mayor que cero'));
+    render();
+
+    fireEvent.change(await screen.findByLabelText('Monto en quetzales'), { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar monto' }));
+
+    expect(await screen.findByText('El monto debe ser un número mayor que cero')).toHaveAttribute('data-tipo', 'error');
+  });
+
+  it('fuera de Borrador el monto es de solo lectura y se ven las aprobaciones', async () => {
+    obtenerSolicitud.mockResolvedValue(
+      solicitud({
+        estado: 'Pendiente de Autorización',
+        accionesPermitidas: ['autorizar'],
+        montoSolicitado: 15000,
+        requiereDobleAprobacion: true,
+        aprobaciones: [{ etapa: 'evaluacion', nombre: 'Evaluador Uno', resultado: 'aprobada', creadoEn: '2026-10-30T18:00:00Z' }],
+      })
+    );
+    render();
+
+    expect(await screen.findByText('Q15,000.00')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Monto en quetzales')).not.toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Aprobaciones' })).toHaveTextContent('Evaluador Uno');
   });
 });

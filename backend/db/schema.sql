@@ -65,13 +65,25 @@ BEGIN
             CHECK (tipo IS NULL OR tipo IN ('nivel-medio', 'universitaria', 'posgrado'));
     END IF;
 
+    -- 'Pendiente de Autorización' entró con la doble aprobación (30/10/2026).
+    -- Una base creada antes tiene el CHECK sin ese valor: se reemplaza.
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint
+         WHERE conname = 'solicitudes_estado_check'
+           AND conrelid = 'solicitudes'::regclass
+           AND pg_get_constraintdef(oid) NOT LIKE '%Pendiente de Autorizaci%'
+    ) THEN
+        ALTER TABLE solicitudes DROP CONSTRAINT solicitudes_estado_check;
+    END IF;
+
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
          WHERE conname = 'solicitudes_estado_check'
            AND conrelid = 'solicitudes'::regclass
     ) THEN
         ALTER TABLE solicitudes ADD CONSTRAINT solicitudes_estado_check
-            CHECK (estado IN ('Borrador', 'Enviada', 'En Evaluación', 'Aprobada', 'Rechazada'));
+            CHECK (estado IN ('Borrador', 'Enviada', 'En Evaluación',
+                              'Pendiente de Autorización', 'Aprobada', 'Rechazada'));
     END IF;
 END
 $$;
@@ -216,3 +228,41 @@ CREATE TABLE IF NOT EXISTS notificaciones (
 
 CREATE INDEX IF NOT EXISTS idx_notificaciones_destinatario
     ON notificaciones (destinatario_id, creado_en DESC);
+
+-- ---------------------------------------------------------------------------
+-- Doble aprobación de las solicitudes de mayor monto (requerimiento nuevo del
+-- Product Owner, 30/10/2026).
+--
+-- monto_solicitado: nullable porque las solicitudes que ya existían no lo
+-- tienen. Las nuevas no se pueden enviar sin él (solicitud.service).
+--
+-- aprobaciones: quién decidió cada etapa, cuándo y con qué resultado. El
+-- UNIQUE (solicitud_id, etapa) impide en la base una segunda decisión sobre la
+-- misma etapa, aunque lleguen dos peticiones a la vez. Que las dos etapas las
+-- decidan personas distintas no cabe en un CHECK (compara dos filas): lo
+-- verifica solicitud.autorizacion.
+-- ---------------------------------------------------------------------------
+ALTER TABLE solicitudes ADD COLUMN IF NOT EXISTS monto_solicitado NUMERIC(12, 2);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+         WHERE conname = 'solicitudes_monto_check'
+           AND conrelid = 'solicitudes'::regclass
+    ) THEN
+        ALTER TABLE solicitudes ADD CONSTRAINT solicitudes_monto_check
+            CHECK (monto_solicitado IS NULL OR monto_solicitado > 0);
+    END IF;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS aprobaciones (
+    id           SERIAL PRIMARY KEY,
+    solicitud_id INTEGER NOT NULL REFERENCES solicitudes(id) ON DELETE CASCADE,
+    usuario_id   INTEGER NOT NULL REFERENCES usuarios(id),
+    etapa        VARCHAR(20) NOT NULL CHECK (etapa IN ('evaluacion', 'autorizacion')),
+    resultado    VARCHAR(20) NOT NULL CHECK (resultado IN ('aprobada', 'rechazada')),
+    creado_en    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (solicitud_id, etapa)
+);

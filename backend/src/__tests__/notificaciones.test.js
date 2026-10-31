@@ -32,7 +32,21 @@ vi.mock('../repositories/notificacion.repository.js', () => ({
   registrar: vi.fn(),
   marcarResultado: vi.fn(),
   listarDe: vi.fn(),
+  contarNoLeidas: vi.fn(),
   marcarLeida: vi.fn(),
+}));
+
+// Desde la doble aprobación, el estado y la aprobación se guardan en una
+// transacción, y la decisión de cada etapa se registra. Esta suite no ejecuta
+// SQL: la transacción solo corre el trabajo y el repositorio se mockea.
+vi.mock('../config/transaccion.js', () => ({
+  conTransaccion: async (trabajo) => trabajo(),
+  db: () => ({}),
+}));
+vi.mock('../repositories/aprobacion.repository.js', () => ({
+  ETAPAS: { EVALUACION: 'evaluacion', AUTORIZACION: 'autorizacion' },
+  registrar: vi.fn(async (decision) => decision),
+  listarDeSolicitud: vi.fn(async () => []),
 }));
 
 /** El estudiante dueño de la solicitud de prueba. */
@@ -311,12 +325,27 @@ describe('consulta de notificaciones: cada usuario ve solo las suyas', () => {
       { id: 2, leidaEn: null },
       { id: 1, leidaEn: new Date() },
     ]);
+    notificacionRepository.contarNoLeidas.mockResolvedValue(1);
 
     const res = respuesta();
     await listarMias({ usuario: { sub: DUENO_ID, rol: 'estudiante' } }, res);
 
     expect(notificacionRepository.listarDe).toHaveBeenCalledWith(DUENO_ID);
+    expect(notificacionRepository.contarNoLeidas).toHaveBeenCalledWith(DUENO_ID);
     expect(res.cuerpo).toMatchObject({ noLeidas: 1 });
+  });
+
+  it('el contador cuenta todas las no leídas, no solo las 50 que trae la lista', async () => {
+    notificacionRepository.listarDe.mockResolvedValue(
+      Array.from({ length: 50 }, (_, i) => ({ id: i + 1, leidaEn: null }))
+    );
+    notificacionRepository.contarNoLeidas.mockResolvedValue(73);
+
+    const res = respuesta();
+    await listarMias({ usuario: { sub: DUENO_ID, rol: 'estudiante' } }, res);
+
+    expect(res.cuerpo.noLeidas).toBe(73);
+    expect(res.cuerpo.notificaciones).toHaveLength(50);
   });
 
   it('sin usuario identificado responde 403 y no consulta nada', async () => {

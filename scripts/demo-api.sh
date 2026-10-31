@@ -241,6 +241,16 @@ else
         -F "solicitudId=$ID_SOL" -F "tipo=$faltante" -F "archivo=@$ARCH;type=application/pdf")"
       rm -f "$ARCH"
     done
+    monto() {  # monto <token> <solicitud> <valor>: PATCH /api/solicitudes/:id/monto
+      codigo -X PATCH "$API/api/solicitudes/$2/monto" -H 'Content-Type: application/json' \
+        -H "Authorization: Bearer $1" -d "{\"monto\":$3}"
+    }
+    echo "   Doble aprobación: sin monto no se envía (si no, se saltaría la segunda aprobación)."
+    comparar "enviar sin monto"                  "400" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/enviar" \
+      -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_DUENO" -d "{\"cui\":\"$CUI_ANA\"}")"
+    comparar "un tercero fija el monto"          "403" "$(monto "$TK_OTRO" "$ID_SOL" 8000)"
+    comparar "monto negativo"                    "400" "$(monto "$TK_DUENO" "$ID_SOL" -5)"
+    comparar "la dueña fija Q8,000"              "200" "$(monto "$TK_DUENO" "$ID_SOL" 8000)"
     echo "   SCRUM-38: con el expediente completo, lo último que se revisa es la"
     echo "   identidad contra RENAP. Un CUI que no sirve da 400 y la deja en Borrador."
     comparar "enviar sin CUI"                 "400" "$(codigo -X POST "$API/api/solicitudes/$ID_SOL/enviar" -H "Authorization: Bearer $TK_DUENO")"
@@ -280,6 +290,51 @@ else
     comparar "la dueña ve los avisos de su solicitud" "3" "$(avisos_de "$TK_DUENO")"
     comparar "el evaluador no ve los avisos de ella"  "0" "$(avisos_de "$TK_EV_SI")"
     comparar "sin sesión no hay avisos"               "401" "$(codigo "$API/api/notificaciones")"
+
+    t "15c. Doble aprobación: una solicitud de más de Q10,000"
+    AUT="autoriza.$SUFIJO@mineduc.gob.gt"
+    registrar "Autoridad Autorizadora" "$AUT"
+    $PSQL -q -c "UPDATE usuarios SET rol='autorizador' WHERE email='$AUT'" 2>/dev/null
+    TK_AUT=$(token "$AUT")
+    GRANDE=$(curl -s -X POST "$API/api/solicitudes" -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $TK_DUENO" -d '{"tipo":"universitaria"}' | sed -n 's/.*"id":\([0-9]*\).*/\1/p')
+    for tipo in dni titulo carta; do
+      ARCH=$(mktemp /tmp/${tipo}-grande-XXXXXX.pdf)
+      printf '%%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%%%EOF\n' > "$ARCH"
+      SUB=$(curl -s -X POST "$API/api/documentos" -H "Authorization: Bearer $TK_DUENO" \
+        -F "solicitudId=$GRANDE" -F "tipo=$tipo" -F "archivo=@$ARCH;type=application/pdf")
+      [ "$tipo" = dni ] && DOC_GRANDE=$(echo "$SUB" | sed -n 's/.*"id":\([0-9]*\).*/\1/p')
+      rm -f "$ARCH"
+    done
+    estado_de() { curl -s "$API/api/solicitudes/$1" -H "Authorization: Bearer $TK_DUENO" | sed -n 's/.*"estado":"\([^"]*\)".*/\1/p'; }
+    comparar "la dueña fija Q15,000"            "200" "$(monto "$TK_DUENO" "$GRANDE" 15000)"
+    comparar "envía con su CUI"                 "200" "$(codigo -X POST "$API/api/solicitudes/$GRANDE/enviar" \
+      -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_DUENO" -d "{\"cui\":\"$CUI_ANA\"}")"
+    comparar "ya Enviada, el monto no cambia"   "409" "$(monto "$TK_DUENO" "$GRANDE" 9000)"
+    comparar "se asigna al evaluador"           "201" "$(asignar "$TK_ADMIN" "$GRANDE" "$ID_EV_SI")"
+    comparar "el evaluador pasa a evaluar"      "200" "$(codigo -X POST "$API/api/solicitudes/$GRANDE/evaluar" -H "Authorization: Bearer $TK_EV_SI")"
+    autorizar() {  # autorizar <token> <solicitud> <true|false>
+      codigo -X POST "$API/api/solicitudes/$2/autorizacion" -H 'Content-Type: application/json' \
+        -H "Authorization: Bearer $1" -d "{\"aprobado\":$3}"
+    }
+    comparar "autorizar antes del dictamen"     "409" "$(autorizar "$TK_AUT" "$GRANDE" true)"
+    comparar "el evaluador aprueba"             "200" "$(codigo -X POST "$API/api/solicitudes/$GRANDE/dictamen" \
+      -H 'Content-Type: application/json' -H "Authorization: Bearer $TK_EV_SI" -d '{"aprobado":true}')"
+    comparar "con una aprobación no queda Aprobada" "Pendiente de Autorización" "$(estado_de "$GRANDE")"
+    en_bandeja_de() { case "$(curl -s "$API/api/solicitudes/asignadas" -H "Authorization: Bearer $1")" in *"\"id\":$GRANDE,"*) echo si ;; *) echo no ;; esac; }
+    comparar "está en la bandeja de la autoridad" "si" "$(en_bandeja_de "$TK_AUT")"
+    comparar "la autoridad abre el expediente"  "200" "$(codigo "$API/api/documentos/$DOC_GRANDE/descargar" -H "Authorization: Bearer $TK_AUT")"
+    comparar "pero no el de otra solicitud"     "403" "$(codigo "$API/api/documentos/$ID_DOC/descargar" -H "Authorization: Bearer $TK_AUT")"
+    comparar "el evaluador intenta autorizar"   "403" "$(autorizar "$TK_EV_SI" "$GRANDE" true)"
+    comparar "la administradora intenta autorizar" "403" "$(autorizar "$TK_ADMIN" "$GRANDE" true)"
+    echo "   Si a quien evaluó le dan después el rol de autorizador, igual no puede dar la segunda:"
+    $PSQL -q -c "UPDATE usuarios SET rol='autorizador' WHERE email='$EV_SI'" 2>/dev/null
+    comparar "la misma persona intenta autorizar" "403" "$(autorizar "$(token "$EV_SI")" "$GRANDE" true)"
+    $PSQL -q -c "UPDATE usuarios SET rol='evaluador' WHERE email='$EV_SI'" 2>/dev/null
+    comparar "la autoridad autoriza"            "200" "$(autorizar "$TK_AUT" "$GRANDE" true)"
+    comparar "con las dos, queda Aprobada"      "Aprobada" "$(estado_de "$GRANDE")"
+    APROB=$(curl -s "$API/api/solicitudes/$GRANDE" -H "Authorization: Bearer $TK_DUENO" | grep -o '"etapa":"[a-z]*"' | tr '\n' ' ')
+    comparar "quedan registradas las dos aprobaciones" '"etapa":"evaluacion" "etapa":"autorizacion" ' "$APROB"
   fi
 fi
 

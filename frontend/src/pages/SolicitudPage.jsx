@@ -9,7 +9,7 @@
 // (SCRUM-38): la pantalla lo pide y el backend lo valida contra RENAP.
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { obtenerSolicitud, enviarSolicitud } from '../services/solicitudService';
+import { obtenerSolicitud, enviarSolicitud, establecerMonto } from '../services/solicitudService';
 import { listarDocumentos, subirDocumento } from '../services/documentoService';
 import { nombreDocumento, nombreModalidad } from '../utils/catalogos';
 import { haySesion } from '../utils/sesion';
@@ -19,6 +19,12 @@ import { theme } from '../styles/theme';
 const ACEPTA = '.pdf,.jpg,.jpeg,.png';
 const LIMITE_MB = 5;
 const AYUDA_ARCHIVOS = `PDF, JPG o PNG, hasta ${LIMITE_MB} MB`;
+
+/** Desde aquí la solicitud necesita una segunda aprobación. Lo decide el backend. */
+const UMBRAL_TEXTO = 'Q10,000';
+const quetzales = (monto) =>
+  `Q${Number(monto).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const ETAPA = { evaluacion: 'Evaluación', autorizacion: 'Autorización' };
 
 export const SolicitudPage = () => {
   const { id } = useParams();
@@ -31,6 +37,8 @@ export const SolicitudPage = () => {
   const [aviso, setAviso] = useState('');
   const [avisoEsError, setAvisoEsError] = useState(false);
   const [cui, setCui] = useState('');
+  const [monto, setMonto] = useState('');
+  const [guardandoMonto, setGuardandoMonto] = useState(false);
 
   useEffect(() => {
     let vigente = true;
@@ -38,6 +46,7 @@ export const SolicitudPage = () => {
       .then(([s, d]) => {
         if (!vigente) return;
         setSolicitud(s);
+        setMonto(s.montoSolicitado != null ? String(s.montoSolicitado) : '');
         setDocumentos(d);
       })
       .catch((e) => vigente && setError(e.message))
@@ -65,6 +74,24 @@ export const SolicitudPage = () => {
   const subidos = new Map(documentos.map((d) => [d.tipo, d]));
   const puedeEnviar = (solicitud.accionesPermitidas ?? []).includes('enviar');
   const editable = solicitud.estado === 'Borrador';
+  const tieneMonto = solicitud.montoSolicitado != null;
+  const aprobaciones = solicitud.aprobaciones ?? [];
+
+  const guardarMonto = async () => {
+    setAviso('');
+    setGuardandoMonto(true);
+    try {
+      const actualizada = await establecerMonto(id, monto);
+      setSolicitud((previa) => ({ ...previa, ...actualizada }));
+      setAvisoEsError(false);
+      setAviso('Monto guardado.');
+    } catch (e) {
+      setAvisoEsError(true);
+      setAviso(e.message);
+    } finally {
+      setGuardandoMonto(false);
+    }
+  };
 
   const alSubir = async () => {
     setFaltantes([]);
@@ -105,6 +132,58 @@ export const SolicitudPage = () => {
         {solicitud.convocatoriaId ? ` · convocatoria #${solicitud.convocatoriaId}` : ''}
       </p>
 
+      <h2 style={styles.seccion}>Monto solicitado</h2>
+      {editable ? (
+        <div style={styles.filaMonto}>
+          <label htmlFor="monto" style={styles.etiqueta}>Monto en quetzales</label>
+          <input
+            id="monto"
+            type="number"
+            min="0.01"
+            step="0.01"
+            inputMode="decimal"
+            value={monto}
+            onChange={(e) => setMonto(e.target.value)}
+            disabled={guardandoMonto}
+            style={styles.input}
+          />
+          <button
+            type="button"
+            style={styles.botonSecundarioBoton}
+            onClick={guardarMonto}
+            disabled={guardandoMonto || !monto.trim()}
+          >
+            {guardandoMonto ? 'Guardando…' : 'Guardar monto'}
+          </button>
+        </div>
+      ) : (
+        <p style={styles.montoFijo}>{tieneMonto ? quetzales(solicitud.montoSolicitado) : 'Sin monto'}</p>
+      )}
+      {solicitud.requiereDobleAprobacion && (
+        <p style={styles.ayuda}>
+          Más de {UMBRAL_TEXTO}: además del evaluador, la debe aprobar la autoridad autorizadora.
+        </p>
+      )}
+
+      {aprobaciones.length > 0 && (
+        <>
+          <h2 style={styles.seccion}>Aprobaciones</h2>
+          <ul style={styles.lista} aria-label="Aprobaciones">
+            {aprobaciones.map((a) => (
+              <li key={a.etapa} style={styles.item}>
+                <span>
+                  <strong>{ETAPA[a.etapa] ?? a.etapa}</strong> · {a.nombre}
+                </span>
+                <span>
+                  {a.resultado === 'aprobada' ? 'Aprobada' : 'Rechazada'} ·{' '}
+                  {new Date(a.creadoEn).toLocaleString('es-GT')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
       <h2 style={styles.seccion}>Expediente</h2>
       {editable && <p style={styles.ayuda}>Formatos aceptados: {AYUDA_ARCHIVOS}.</p>}
       <ul style={styles.lista}>
@@ -137,6 +216,7 @@ export const SolicitudPage = () => {
             style={styles.input}
           />
           <p style={styles.ayuda}>Se verifica contra RENAP al enviar. Debe ser el suyo.</p>
+          {!tieneMonto && <p style={styles.ayuda}>Guarde primero el monto que solicita.</p>}
         </div>
       )}
 
@@ -151,7 +231,7 @@ export const SolicitudPage = () => {
       )}
 
       {puedeEnviar && (
-        <button type="button" style={styles.boton} onClick={enviar} disabled={enviando || !cui.trim()}>
+        <button type="button" style={styles.boton} onClick={enviar} disabled={enviando || !cui.trim() || !tieneMonto}>
           {enviando ? 'Enviando…' : 'Enviar a evaluación'}
         </button>
       )}
@@ -235,6 +315,9 @@ const styles = {
   itemError: { margin: '0.3rem 0 0', fontSize: '0.82rem', color: theme.colors.error },
   botonSecundario: { position: 'relative', whiteSpace: 'nowrap', cursor: 'pointer', border: `1px solid ${theme.colors.primary}`, color: theme.colors.primary, borderRadius: theme.borderRadius.md, padding: '0.4rem 0.85rem', fontSize: '0.84rem', fontWeight: 600 },
   inputOculto: { position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' },
+  filaMonto: { display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' },
+  montoFijo: { margin: 0, fontSize: '1rem', fontWeight: 600, color: theme.colors.textPrimary },
+  botonSecundarioBoton: { background: 'none', cursor: 'pointer', border: `1px solid ${theme.colors.primary}`, color: theme.colors.primary, borderRadius: theme.borderRadius.md, padding: '0.45rem 0.85rem', fontSize: '0.84rem', fontWeight: 600 },
   campo: { marginTop: '1.4rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', maxWidth: '320px' },
   etiqueta: { fontSize: '0.88rem', fontWeight: 600, color: theme.colors.textPrimary },
   input: { padding: '0.55rem 0.7rem', border: `1px solid ${theme.colors.border}`, borderRadius: theme.borderRadius.md, fontSize: '0.92rem' },

@@ -1,6 +1,7 @@
 import { IEstadoSolicitud } from './IEstadoSolicitud.js';
 import { EstadoAprobada } from './EstadoAprobada.js';
 import { EstadoRechazada } from './EstadoRechazada.js';
+import { EstadoPendienteAutorizacion } from './EstadoPendienteAutorizacion.js';
 
 /**
  * Patrón State — Estado concreto "En Evaluación".
@@ -28,11 +29,30 @@ export class EstadoEnEvaluacion extends IEstadoSolicitud {
    * @param {import('./Solicitud.js').Solicitud} solicitud
    * @param {boolean} aprobado `true` aprueba la beca, `false` la rechaza.
    */
-  dictaminar(solicitud, aprobado) {
+  /**
+   * Dictamen del evaluador.
+   *
+   * Si la solicitud requiere una segunda aprobación (monto mayor al umbral),
+   * aprobar no la deja Aprobada: la pasa a Pendiente de Autorización. Rechazar
+   * siempre la deja Rechazada. Quién decide si requiere la segunda aprobación
+   * es el service, que conoce el monto; el estado solo sabe a dónde ir.
+   *
+   * @param {import('./Solicitud.js').Solicitud} solicitud
+   * @param {boolean} aprobado
+   * @param {{requiereAutorizacion?: boolean}} [opciones]
+   */
+  dictaminar(solicitud, aprobado, { requiereAutorizacion = false } = {}) {
     if (typeof aprobado !== 'boolean') {
       throw new TypeError('El dictamen requiere un valor booleano: true aprueba, false rechaza.');
     }
 
-    solicitud.cambiarEstado(aprobado ? new EstadoAprobada() : new EstadoRechazada());
+    if (!aprobado) {
+      solicitud.cambiarEstado(new EstadoRechazada());
+      return;
+    }
+
+    solicitud.cambiarEstado(
+      requiereAutorizacion ? new EstadoPendienteAutorizacion() : new EstadoAprobada()
+    );
   }
 }

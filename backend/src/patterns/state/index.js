@@ -3,11 +3,19 @@ import { EstadoEnviada } from './EstadoEnviada.js';
 import { EstadoEnEvaluacion } from './EstadoEnEvaluacion.js';
 import { EstadoAprobada } from './EstadoAprobada.js';
 import { EstadoRechazada } from './EstadoRechazada.js';
+import { EstadoPendienteAutorizacion } from './EstadoPendienteAutorizacion.js';
 
 export { IEstadoSolicitud } from './IEstadoSolicitud.js';
 export { TransicionInvalidaError } from './TransicionInvalidaError.js';
 export { Solicitud } from './Solicitud.js';
-export { EstadoBorrador, EstadoEnviada, EstadoEnEvaluacion, EstadoAprobada, EstadoRechazada };
+export {
+  EstadoBorrador,
+  EstadoEnviada,
+  EstadoEnEvaluacion,
+  EstadoPendienteAutorizacion,
+  EstadoAprobada,
+  EstadoRechazada,
+};
 
 /**
  * Mapa nombre persistido → clase de estado.
@@ -21,6 +29,7 @@ const ESTADOS_POR_NOMBRE = {
   [new EstadoBorrador().nombre]: EstadoBorrador,
   [new EstadoEnviada().nombre]: EstadoEnviada,
   [new EstadoEnEvaluacion().nombre]: EstadoEnEvaluacion,
+  [new EstadoPendienteAutorizacion().nombre]: EstadoPendienteAutorizacion,
   [new EstadoAprobada().nombre]: EstadoAprobada,
   [new EstadoRechazada().nombre]: EstadoRechazada,
 };

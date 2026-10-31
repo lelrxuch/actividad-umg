@@ -13,6 +13,7 @@
 //
 // Falla cerrado: sin un usuario identificable, no se autoriza nada.
 import { evaluadoresDeSolicitud } from '../repositories/documento.repository.js';
+import { listarDeSolicitud as aprobacionesDeSolicitud, ETAPAS } from '../repositories/aprobacion.repository.js';
 
 /** Acciones del ciclo de vida que esta capa controla. */
 export const ACCIONES = Object.freeze({
@@ -20,7 +21,15 @@ export const ACCIONES = Object.freeze({
   ENVIAR: 'enviar',
   EVALUAR: 'evaluar',
   DICTAMINAR: 'dictaminar',
+  AUTORIZAR: 'autorizar',
+  EDITAR: 'editar',
 });
+
+/** Rol de la autoridad autorizadora: da la segunda aprobación de mayor monto. */
+export const ROL_AUTORIZADOR = 'autorizador';
+
+/** Estado en que una solicitud espera a la autoridad autorizadora. */
+const PENDIENTE_DE_AUTORIZACION = 'Pendiente de Autorización';
 
 /** Compara identificadores que pueden venir como número o como cadena. */
 function mismoId(a, b) {
@@ -37,6 +46,7 @@ function denegar(mensaje) {
 export const BANDEJA = Object.freeze({
   ASIGNADAS: 'asignadas',
   EN_REVISION: 'en-revision',
+  POR_AUTORIZAR: 'por-autorizar',
 });
 
 /**
@@ -57,8 +67,9 @@ export function bandejaDe(usuario) {
 
   if (usuario.rol === 'administrador') return BANDEJA.EN_REVISION;
   if (usuario.rol === 'evaluador') return BANDEJA.ASIGNADAS;
+  if (usuario.rol === ROL_AUTORIZADOR) return BANDEJA.POR_AUTORIZAR;
 
-  denegar('Solo evaluadores y administradores tienen bandeja de revisión.');
+  denegar('Solo evaluadores, autorizadores y administradores tienen bandeja de revisión.');
 }
 
 /**
@@ -100,7 +111,31 @@ export async function autorizar(accion, fila, usuario) {
   const esDueno = mismoId(usuario.id, fila.estudiante_id);
   const esAdministrador = usuario.rol === 'administrador';
 
+  // Autorizar va ANTES de la excepción del administrador: la segunda
+  // aprobación es solo de la autoridad autorizadora, y nadie (ni un
+  // administrador) puede dar las dos.
+  if (accion === ACCIONES.AUTORIZAR) {
+    if (usuario.rol !== ROL_AUTORIZADOR) {
+      denegar('Solo la autoridad autorizadora puede autorizar la solicitud.');
+    }
+
+    const aprobaciones = await aprobacionesDeSolicitud(fila.id);
+    const primera = aprobaciones.find((a) => a.etapa === ETAPAS.EVALUACION);
+    if (primera && mismoId(primera.usuarioId, usuario.id)) {
+      denegar('La misma persona no puede dar las dos aprobaciones.');
+    }
+    return;
+  }
+
   if (esAdministrador) {
+    return;
+  }
+
+  // Editar datos de la solicitud (el monto) es del dueño, como enviarla.
+  if (accion === ACCIONES.EDITAR) {
+    if (!esDueno) {
+      denegar('No puede modificar una solicitud ajena.');
+    }
     return;
   }
 
@@ -138,6 +173,11 @@ export async function autorizar(accion, fila, usuario) {
       if (asignados.some((id) => mismoId(id, usuario.id))) {
         return;
       }
+    }
+
+    // La autoridad autorizadora ve las que esperan su decisión.
+    if (usuario.rol === ROL_AUTORIZADOR && fila.estado === PENDIENTE_DE_AUTORIZACION) {
+      return;
     }
 
     denegar('No tiene acceso a esta solicitud.');

@@ -6,7 +6,7 @@ import * as solicitudes from '../services/solicitudService';
 import * as documentos from '../services/documentoService';
 import { errorDeApi } from '../services/errores';
 
-vi.mock('../services/api', () => ({ default: { get: vi.fn(), post: vi.fn() } }));
+vi.mock('../services/api', () => ({ default: { get: vi.fn(), post: vi.fn(), patch: vi.fn() } }));
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -117,4 +117,39 @@ describe('documentoService', () => {
     responseType: 'blob',
   });
 });
+});
+
+describe('solicitudService — doble aprobación', () => {
+  it('establecerMonto hace PATCH con el monto', async () => {
+    API.patch.mockResolvedValue({ data: { id: 42, montoSolicitado: 15000 } });
+
+    const r = await solicitudes.establecerMonto(42, '15000');
+
+    expect(API.patch).toHaveBeenCalledWith('/solicitudes/42/monto', { monto: '15000' });
+    expect(r.montoSolicitado).toBe(15000);
+  });
+
+  it('establecerMonto propaga el mensaje del backend', async () => {
+    API.patch.mockRejectedValue({ response: { status: 409, data: { error: 'Solo en Borrador.' } } });
+
+    await expect(solicitudes.establecerMonto(42, 1)).rejects.toThrow('Solo en Borrador.');
+  });
+
+  it('autorizarSolicitud hace POST con el booleano', async () => {
+    API.post.mockResolvedValue({ data: { id: 42, estado: 'Aprobada' } });
+
+    const r = await solicitudes.autorizarSolicitud(42, true);
+
+    expect(API.post).toHaveBeenCalledWith('/solicitudes/42/autorizacion', { aprobado: true });
+    expect(r.estado).toBe('Aprobada');
+  });
+
+  it('autorizarSolicitud propaga el 403 del backend', async () => {
+    API.post.mockRejectedValue({ response: { status: 403, data: { error: 'La misma persona no puede dar las dos aprobaciones.' } } });
+
+    await expect(solicitudes.autorizarSolicitud(42, true)).rejects.toMatchObject({
+      status: 403,
+      message: 'La misma persona no puede dar las dos aprobaciones.',
+    });
+  });
 });
