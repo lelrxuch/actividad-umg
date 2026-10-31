@@ -27,6 +27,7 @@ export const DashboardPage = () => {
 
   const rolNormalizado = (usuario?.rol || '').toLowerCase();
   const esEvaluadorOAdmin = ['evaluador', 'administrador', 'admin'].includes(rolNormalizado);
+  const esAutorizador = rolNormalizado === 'autorizador';
   const esAdmin = ['administrador', 'admin'].includes(rolNormalizado);
 
   return (
@@ -41,6 +42,9 @@ export const DashboardPage = () => {
         <Link to="/notificaciones" style={styles.link}>Mis notificaciones</Link>
         {esEvaluadorOAdmin && (
           <Link to="/evaluador" style={styles.link}>Bandeja del evaluador</Link>
+        )}
+        {esAutorizador && (
+          <Link to="/evaluador" style={styles.link}>Solicitudes por autorizar</Link>
         )}
         {esAdmin && (
           <Link to="/admin/asignaciones" style={styles.link}>Asignar evaluadores</Link>

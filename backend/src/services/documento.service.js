@@ -11,6 +11,9 @@ import { DocumentoProxy } from '../patterns/structural/DocumentoProxy.js';
 import { SolicitudFactory } from '../patterns/creational/SolicitudFactory.js';
 import { guardarArchivo } from '../config/almacenamiento.js';
 
+const ROL_AUTORIZADOR = 'autorizador';
+const PENDIENTE_DE_AUTORIZACION = 'Pendiente de Autorización';
+
 /**
  * Prepara el acceso a un documento, resolviendo quiénes son los evaluadores de
  * su solicitud y envolviéndolo en el proxy de protección.
@@ -35,7 +38,14 @@ export async function obtenerDocumento(documentoId, usuario, { almacenamiento } 
 
   const evaluadoresAsignados = await documentoRepository.evaluadoresDeSolicitud(fila.solicitudId);
 
-  return new DocumentoProxy(fila, usuario, { evaluadoresAsignados, almacenamiento });
+  // Solo para la autoridad autorizadora hace falta el estado de la solicitud.
+  let esperaAutorizacion = false;
+  if (usuario?.rol === ROL_AUTORIZADOR) {
+    const solicitud = await solicitudRepository.findById(fila.solicitudId);
+    esperaAutorizacion = solicitud?.estado === PENDIENTE_DE_AUTORIZACION;
+  }
+
+  return new DocumentoProxy(fila, usuario, { evaluadoresAsignados, almacenamiento, esperaAutorizacion });
 }
 
 /**
@@ -233,7 +243,9 @@ export async function listarDocumentos(solicitudId, usuario) {
   const esEvaluadorAsignado =
     usuario?.rol === 'evaluador' && evaluadores.some((id) => String(id) === String(usuario?.id));
 
-  if (!esDueno && !esEvaluadorAsignado && usuario?.rol !== 'administrador') {
+  const autorizaEsta = usuario?.rol === ROL_AUTORIZADOR && solicitud.estado === PENDIENTE_DE_AUTORIZACION;
+
+  if (!esDueno && !esEvaluadorAsignado && !autorizaEsta && usuario?.rol !== 'administrador') {
     const error = new Error('No tiene acceso a esta solicitud.');
     error.status = 403;
     throw error;

@@ -26,11 +26,13 @@ function exigirUsuario(usuario) {
 export async function listarMias(usuario) {
   exigirUsuario(usuario);
 
-  const notificaciones = await notificacionRepository.listarDe(usuario.id);
-  return {
-    noLeidas: notificaciones.filter((n) => !n.leidaEn).length,
-    notificaciones,
-  };
+  // El contador va aparte: la lista corta en 50 y el usuario puede tener más
+  // sin leer.
+  const [notificaciones, noLeidas] = await Promise.all([
+    notificacionRepository.listarDe(usuario.id),
+    notificacionRepository.contarNoLeidas(usuario.id),
+  ]);
+  return { noLeidas, notificaciones };
 }
 
 /**

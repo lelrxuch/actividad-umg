@@ -16,6 +16,8 @@ import { Solicitud, crearEstadoDesdeNombre } from '../patterns/state/index.js';
 import { EmailNotificationListener } from '../patterns/observer/EmailNotificationListener.js';
 import { NotificacionRegistradaListener } from '../patterns/observer/NotificacionRegistradaListener.js';
 import * as notificacionRepository from '../repositories/notificacion.repository.js';
+import * as aprobacionRepository from '../repositories/aprobacion.repository.js';
+import { conTransaccion } from '../config/transaccion.js';
 import { SolicitudFactory } from '../patterns/creational/SolicitudFactory.js';
 import {
   autorizar,
@@ -34,6 +36,26 @@ import { IdentidadNoValidaError } from '../patterns/structural/ErroresIdentidad.
  * Único mensaje para un CUI que no existe en RENAP o que no es del dueño de la
  * solicitud (ver exigirIdentidad).
  */
+/**
+ * Monto, en quetzales, por ENCIMA del cual una solicitud necesita dos
+ * aprobaciones: la del evaluador y la de la autoridad autorizadora. Exactamente
+ * Q10,000 sigue el flujo de una sola aprobación ("supere los Q10,000").
+ */
+export const MONTO_DOBLE_APROBACION = 10000;
+
+/** Mayor monto aceptado: el máximo de la columna NUMERIC(12, 2). */
+const MONTO_MAXIMO = 9999999999.99;
+
+/**
+ * ¿Necesita esta solicitud la segunda aprobación?
+ * @param {{monto_solicitado: string|number|null}} fila
+ * @returns {boolean}
+ */
+export function requiereDobleAprobacion(fila) {
+  // Sin monto (null) Number da 0: no requiere. Enviar sin monto ya está bloqueado.
+  return Number(fila.monto_solicitado ?? 0) > MONTO_DOBLE_APROBACION;
+}
+
 export const MENSAJE_IDENTIDAD_NO_VERIFICADA =
   'No se pudo verificar su identidad con el CUI ingresado. Revise que sea el de su DPI y que coincida con el nombre de su cuenta.';
 
@@ -53,10 +75,15 @@ function errorDeNegocio(mensaje, status, extra = {}) {
  */
 function formatoPublico(fila, solicitud = hidratar(fila)) {
   const modalidad = fila.tipo ? SolicitudFactory.crearSolicitud(fila.tipo).toJSON() : {};
+  const monto = fila.monto_solicitado;
   return {
     ...solicitud.toJSON(),
     ...modalidad,
     convocatoriaId: fila.convocatoria_id ?? null,
+    // NUMERIC llega de `pg` como texto, para no perder precisión: se expone
+    // como número porque son quetzales con dos decimales.
+    montoSolicitado: monto === null || monto === undefined ? null : Number(monto),
+    requiereDobleAprobacion: requiereDobleAprobacion(fila),
   };
 }
 
@@ -85,6 +112,17 @@ async function exigirExpedienteCompleto(fila) {
       400,
       { faltantes }
     );
+  }
+}
+
+/**
+ * Una solicitud no se envía sin monto: es lo que decide si necesita una o dos
+ * aprobaciones. Si se pudiera enviar sin él, bastaría con no llenarlo para
+ * saltarse la segunda aprobación.
+ */
+function exigirMonto(fila) {
+  if (fila.monto_solicitado === null || fila.monto_solicitado === undefined) {
+    throw errorDeNegocio('Indique el monto que solicita antes de enviar la solicitud.', 400);
   }
 }
 
@@ -205,16 +243,25 @@ async function aplicarTransicion(id, accion, opciones = {}) {
 
   // Aquí ocurre la delegación del patrón State. Si la transición es inválida,
   // esto lanza y el `actualizarEstado` de abajo nunca se ejecuta.
-  accion(solicitud);
+  accion(solicitud, fila);
 
   // La transición fue aceptada. Primero se guarda el estado nuevo y SOLO
   // DESPUÉS se avisa: si la escritura falla, nadie recibe el aviso de un
   // estado que no existe; si el aviso falla, el estado ya quedó guardado.
-  await solicitudRepository.actualizarEstado(
-    solicitud.id,
-    solicitud.nombreEstado,
-    ...(registro ? [registro] : [])
-  );
+  //
+  // El estado y lo que la acción registre junto con él (la aprobación de un
+  // dictamen) van en la MISMA transacción: o se guardan los dos o ninguno.
+  await conTransaccion(async () => {
+    await solicitudRepository.actualizarEstado(
+      solicitud.id,
+      solicitud.nombreEstado,
+      ...(registro ? [registro] : [])
+    );
+
+    if (opciones.alGuardar) {
+      await opciones.alGuardar(fila, opciones.usuario);
+    }
+  });
 
   // Nunca lanza: una falla de cualquier canal se atrapa y se registra
   // (Solicitud#notificar y NotificacionRegistradaListener).
@@ -309,10 +356,15 @@ export async function listarMisSolicitudes(usuario) {
  * @throws {Error & { status: number }} 403 a un estudiante o sin usuario.
  */
 export async function listarAsignadas(usuario) {
-  const filas =
-    bandejaDe(usuario) === BANDEJA.ASIGNADAS
-      ? await solicitudRepository.listarAsignadasA(usuario.id)
-      : await solicitudRepository.listarEnRevision();
+  const bandeja = bandejaDe(usuario);
+  let filas;
+  if (bandeja === BANDEJA.ASIGNADAS) {
+    filas = await solicitudRepository.listarAsignadasA(usuario.id);
+  } else if (bandeja === BANDEJA.POR_AUTORIZAR) {
+    filas = await solicitudRepository.listarEnEstado('Pendiente de Autorización');
+  } else {
+    filas = await solicitudRepository.listarEnRevision();
+  }
 
   return filas.map((fila) => formatoPublico(fila));
 }
@@ -392,7 +444,12 @@ export async function obtenerSolicitud(id, usuario) {
 
   await autorizar(ACCIONES.VER, fila, usuario);
 
-  return formatoPublico(fila);
+  // Quién aprobó o rechazó cada etapa, y cuándo: lo pide el requerimiento de
+  // doble aprobación y le sirve al estudiante para saber en qué va.
+  return {
+    ...formatoPublico(fila),
+    aprobaciones: await aprobacionRepository.listarDeSolicitud(fila.id),
+  };
 }
 
 /**
@@ -412,6 +469,7 @@ export function enviarSolicitud(id, { cui, validadorIdentidad, ...opciones } = {
     ...opciones,
     accionAutorizada: ACCIONES.ENVIAR,
     precondicion: async (fila) => {
+      exigirMonto(fila);
       await exigirExpedienteCompleto(fila);
       return exigirIdentidad(fila, cui, validadorIdentidad);
     },
@@ -431,16 +489,103 @@ export function evaluarSolicitud(id, opciones = {}) {
 }
 
 /**
- * En Evaluación → Aprobada | Rechazada. Notifica al estudiante.
+ * Dictamen del evaluador. Notifica al estudiante.
+ *
+ * En Evaluación → Aprobada | Rechazada. Si el monto supera
+ * {@link MONTO_DOBLE_APROBACION}, aprobar no es final: la solicitud pasa a
+ * Pendiente de Autorización y espera a la autoridad autorizadora.
+ *
+ * La decisión queda registrada (quién, cuándo, resultado) en la misma
+ * transacción que el estado.
+ *
  * @param {number} id
  * @param {boolean} aprobado
  * @param {object} [opciones]
  */
 export function dictaminarSolicitud(id, aprobado, opciones = {}) {
-  return aplicarTransicion(id, (solicitud) => solicitud.dictaminar(aprobado), {
+  return aplicarTransicion(
+    id,
+    (solicitud, fila) =>
+      solicitud.dictaminar(aprobado, { requiereAutorizacion: requiereDobleAprobacion(fila) }),
+    {
+      ...opciones,
+      accionAutorizada: ACCIONES.DICTAMINAR,
+      alGuardar: (fila, usuario) =>
+        aprobacionRepository.registrar({
+          solicitudId: fila.id,
+          usuarioId: usuario.id,
+          etapa: aprobacionRepository.ETAPAS.EVALUACION,
+          aprobado,
+        }),
+    }
+  );
+}
+
+/**
+ * Segunda aprobación, de la autoridad autorizadora. Notifica al estudiante.
+ *
+ * Pendiente de Autorización → Aprobada | Rechazada. Quién puede hacerlo, y que
+ * no sea la misma persona que dio la primera aprobación, lo decide
+ * solicitud.autorizacion.
+ *
+ * @param {number} id
+ * @param {boolean} aprobado
+ * @param {object} [opciones]
+ */
+export function autorizarSolicitud(id, aprobado, opciones = {}) {
+  return aplicarTransicion(id, (solicitud) => solicitud.autorizar(aprobado), {
     ...opciones,
-    accionAutorizada: ACCIONES.DICTAMINAR,
+    accionAutorizada: ACCIONES.AUTORIZAR,
+    alGuardar: (fila, usuario) =>
+      aprobacionRepository.registrar({
+        solicitudId: fila.id,
+        usuarioId: usuario.id,
+        etapa: aprobacionRepository.ETAPAS.AUTORIZACION,
+        aprobado,
+      }),
   });
+}
+
+/**
+ * Fija el monto que pide el estudiante. Solo el dueño, y solo en Borrador: una
+ * vez enviada, cambiar el monto cambiaría cuántas aprobaciones necesita.
+ *
+ * @param {number} id
+ * @param {*} monto Tal como llegó en el cuerpo de la petición.
+ * @param {{id: *, rol: string}} usuario
+ * @returns {Promise<object>} La solicitud, con el monto nuevo.
+ */
+export async function establecerMonto(id, monto, usuario) {
+  const fila = await solicitudRepository.findById(id);
+  if (!fila) {
+    throw errorDeNegocio(`No existe la solicitud ${id}.`, 404);
+  }
+
+  await autorizar(ACCIONES.EDITAR, fila, usuario);
+
+  if (!hidratar(fila).accionesPermitidas.includes('enviar')) {
+    throw errorDeNegocio(
+      'El monto solo se puede cambiar mientras la solicitud está en Borrador.',
+      409
+    );
+  }
+
+  const valor = typeof monto === 'string' && monto.trim() !== '' ? Number(monto) : monto;
+  if (
+    typeof valor !== 'number'
+    || !Number.isFinite(valor)
+    || valor <= 0
+    || valor > MONTO_MAXIMO
+    || Math.round(valor * 100) !== valor * 100
+  ) {
+    throw errorDeNegocio(
+      'El monto debe ser un número mayor que cero, en quetzales, con dos decimales como máximo.',
+      400
+    );
+  }
+
+  const actualizada = await solicitudRepository.actualizarMonto(fila.id, valor);
+  return formatoPublico(actualizada);
 }
 
 /**

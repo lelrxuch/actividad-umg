@@ -36,7 +36,7 @@ Sin un patrón que encapsule este comportamiento, la validación de transiciones
 
 ### ¿Qué alternativas existían?
 
-**Enum con condicionales.** Guardar el estado como un valor simple y evaluarlo con `switch` en cada operación. Es lo más inmediato de escribir, pero la lógica de qué transición es válida queda repartida por toda la clase. Con cinco estados y tres acciones son quince combinaciones que el desarrollador debe sostener mentalmente, y la clase queda abierta a modificación cada vez que el flujo cambia, violando el principio Open/Closed.
+**Enum con condicionales.** Guardar el estado como un valor simple y evaluarlo con `switch` en cada operación. Es lo más inmediato de escribir, pero la lógica de qué transición es válida queda repartida por toda la clase. Con seis estados y cuatro acciones son veinticuatro combinaciones que el desarrollador debe sostener mentalmente, y la clase queda abierta a modificación cada vez que el flujo cambia, violando el principio Open/Closed.
 
 **Tabla de transiciones.** Declarar en una estructura central qué transiciones son permitidas y consultarla antes de cada cambio. Centraliza las reglas, que es una ventaja real frente a la alternativa anterior. El problema es que la tabla y el código quedan desacoplados: nada obliga a que una operación nueva la consulte, y si alguien la omite, la regla simplemente no se aplica.
 

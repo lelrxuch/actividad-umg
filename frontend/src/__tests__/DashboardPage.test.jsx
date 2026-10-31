@@ -27,4 +27,15 @@ describe('DashboardPage', () => {
 
     expect(screen.queryByRole('link', { name: /Asignar evaluadores/i })).not.toBeInTheDocument();
   });
+
+  it('la autoridad autorizadora ve "Solicitudes por autorizar"; los demás no', () => {
+    localStorage.setItem('user', JSON.stringify({ nombre: 'Autoridad', rol: 'autorizador' }));
+    const { unmount } = renderConRouter(<DashboardPage />);
+    expect(screen.getByRole('link', { name: 'Solicitudes por autorizar' })).toHaveAttribute('href', '/evaluador');
+    unmount();
+
+    localStorage.setItem('user', JSON.stringify({ nombre: 'Evaluador', rol: 'evaluador' }));
+    renderConRouter(<DashboardPage />);
+    expect(screen.queryByRole('link', { name: 'Solicitudes por autorizar' })).not.toBeInTheDocument();
+  });
 });

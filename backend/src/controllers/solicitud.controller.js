@@ -168,6 +168,45 @@ export async function evaluar(req, res) {
 }
 
 /**
+ * POST /api/solicitudes/:id/autorizacion
+ * Segunda aprobación, de la autoridad autorizadora: Pendiente de Autorización
+ * -> Aprobada o Rechazada. Body: { aprobado }
+ */
+export async function autorizarSolicitud(req, res) {
+  try {
+    const { aprobado } = req.body || {};
+
+    if (typeof aprobado !== 'boolean') {
+      return res.status(400).json({ error: 'El campo "aprobado" es requerido y debe ser booleano.' });
+    }
+
+    const resultado = await solicitudService.autorizarSolicitud(Number(req.params.id), aprobado, {
+      usuario: solicitante(req),
+    });
+    res.json(resultado);
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
+/**
+ * PATCH /api/solicitudes/:id/monto
+ * El dueño fija el monto que solicita, en Borrador. Body: { monto }
+ */
+export async function establecerMonto(req, res) {
+  try {
+    const resultado = await solicitudService.establecerMonto(
+      Number(req.params.id),
+      req.body?.monto,
+      solicitante(req)
+    );
+    res.json(resultado);
+  } catch (error) {
+    responderError(res, error);
+  }
+}
+
+/**
  * POST /api/solicitudes/:id/dictamen
  * Transición: En Evaluación -> Aprobada o Rechazada
  */

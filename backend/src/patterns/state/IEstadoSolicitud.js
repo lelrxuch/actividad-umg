@@ -84,4 +84,14 @@ export class IEstadoSolicitud {
   dictaminar(solicitud, aprobado) {
     throw new TransicionInvalidaError('dictaminar', this.nombre, this.accionesPermitidas);
   }
+
+  /**
+   * Autorización final de una solicitud de mayor monto. Solo la admite
+   * Pendiente de Autorización.
+   * @param {import('./Solicitud.js').Solicitud} solicitud
+   * @param {boolean} aprobado
+   */
+  autorizar(solicitud, aprobado) {
+    throw new TransicionInvalidaError('autorizar', this.nombre, this.accionesPermitidas);
+  }
 }

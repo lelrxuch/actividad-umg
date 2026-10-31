@@ -112,3 +112,35 @@ export const asignarEvaluador = async (solicitudId, evaluadorId) => {
     throw errorDeApi(error, 'No se pudo asignar el evaluador');
   }
 };
+/**
+ * Fija el monto que pide el estudiante. Solo en Borrador: decide si la
+ * solicitud necesita la segunda aprobación (más de Q10,000).
+ * PATCH /api/solicitudes/:id/monto
+ *
+ * @param {number|string} id
+ * @param {number|string} monto En quetzales, con dos decimales como máximo.
+ */
+export const establecerMonto = async (id, monto) => {
+  try {
+    const respuesta = await API.patch(`/solicitudes/${id}/monto`, { monto });
+    return respuesta.data;
+  } catch (error) {
+    throw errorDeApi(error, 'No se pudo guardar el monto');
+  }
+};
+
+/**
+ * Segunda aprobación de una solicitud de más de Q10,000, que da la autoridad
+ * autorizadora. POST /api/solicitudes/:id/autorizacion
+ *
+ * @param {number|string} id
+ * @param {boolean} aprobado
+ */
+export const autorizarSolicitud = async (id, aprobado) => {
+  try {
+    const respuesta = await API.post(`/solicitudes/${id}/autorizacion`, { aprobado });
+    return respuesta.data;
+  } catch (error) {
+    throw errorDeApi(error, 'No se pudo registrar la autorización');
+  }
+};

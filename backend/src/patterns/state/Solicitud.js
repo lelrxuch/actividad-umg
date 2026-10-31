@@ -226,13 +226,27 @@ export class Solicitud {
   }
 
   /**
-   * Emite el dictamen final. Delega en el estado actual.
+   * Emite el dictamen del evaluador. Delega en el estado actual.
+   * @param {boolean} aprobado
+   * @param {{requiereAutorizacion?: boolean}} [opciones] Si la solicitud
+   *   necesita además la aprobación de la autoridad autorizadora.
+   * @throws {import('./TransicionInvalidaError.js').TransicionInvalidaError}
+   * @returns {this}
+   */
+  dictaminar(aprobado, opciones) {
+    this.#estado.dictaminar(this, aprobado, opciones);
+    return this;
+  }
+
+  /**
+   * Autorización final de una solicitud de mayor monto. Delega en el estado
+   * actual.
    * @param {boolean} aprobado
    * @throws {import('./TransicionInvalidaError.js').TransicionInvalidaError}
    * @returns {this}
    */
-  dictaminar(aprobado) {
-    this.#estado.dictaminar(this, aprobado);
+  autorizar(aprobado) {
+    this.#estado.autorizar(this, aprobado);
     return this;
   }
 

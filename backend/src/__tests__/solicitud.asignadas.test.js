@@ -138,10 +138,12 @@ describe('las consultas de la bandeja', () => {
     expect(sql).toMatch(/ORDER BY creado_en ASC/);
   });
 
-  it('la del administrador trae solo Enviada y En Evaluación, de la más vieja a la más nueva', async () => {
+  it('la del administrador trae las que esperan revisión, de la más vieja a la más nueva', async () => {
     const sql = await consulta('listarEnRevision');
 
-    expect(sql).toMatch(/estado IN \('Enviada', 'En Evaluación'\)/);
+    // 'Pendiente de Autorización' entró con la doble aprobación: también espera
+    // una decisión, la de la autoridad autorizadora.
+    expect(sql).toMatch(/estado IN \('Enviada', 'En Evaluación', 'Pendiente de Autorización'\)/);
     expect(sql).toMatch(/ORDER BY creado_en ASC/);
   });
 });
