@@ -7,7 +7,7 @@ export const registerUser = async (userData) => {
     const response = await API.post('/auth/register', userData);
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.error || 'Error de conexión con el servidor');
+    throw new Error(error.response?.data?.error || 'Error de conexión con el servidor', { cause: error });
   }
 };
 
@@ -17,7 +17,7 @@ export const loginUser = async (credentials) => {
     const response = await API.post('/auth/login', credentials);
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.error || 'Error de conexión con el servidor');
+    throw new Error(error.response?.data?.error || 'Error de conexión con el servidor', { cause: error });
   }
 };
 
@@ -27,6 +27,6 @@ export const requestPasswordReset = async (email) => {
     const response = await API.post('/auth/forgot-password', { email });
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.error || 'Error al solicitar la recuperación');
+    throw new Error(error.response?.data?.error || 'Error al solicitar la recuperación', { cause: error });
   }
 };

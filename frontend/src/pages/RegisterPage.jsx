@@ -5,9 +5,10 @@ import { registerUser } from '../services/authService';
 import { theme } from '../styles/theme';
 
 export const RegisterPage = () => {
+  const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState(''); // <-- Estado para confirmar
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -18,23 +19,14 @@ export const RegisterPage = () => {
     setErrorMessage('');
     setSuccessMessage('');
 
-    // 1. Validar dominio institucional (.edu.gt o .gob.gt)
-    const dominiosValidos = ['@miumg.edu.gt', '@mineduc.gob.gt', '@usac.edu.gt'];
-    const esDominioValido = dominiosValidos.some(dominio => email.toLowerCase().endsWith(dominio));
-
-    if (!esDominioValido) {
-      setErrorMessage('Error: Solo se permiten correos institucionales (.edu.gt / .gob.gt).');
-      return;
-    }
-
-    // 2. Validar complejidad de contraseña: Mínimo 8 caracteres, 1 mayúscula y 1 número
+    // 1. Validar complejidad de contraseña: Mínimo 8 caracteres, 1 mayúscula y 1 número
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(password)) {
       setErrorMessage('Error: La contraseña debe contener al menos 8 caracteres, una mayúscula y un número.');
       return;
     }
 
-    // 3. Validar que ambas contraseñas coincidan
+    // 2. Validar que ambas contraseñas coincidan
     if (password !== confirmPassword) {
       setErrorMessage('Error: Las contraseñas ingresadas no coinciden.');
       return;
@@ -43,17 +35,18 @@ export const RegisterPage = () => {
     setIsLoading(true);
 
     try {
-      // 4. Petición al servicio/backend
-      // await registerUser({ email, password });
+      // 3. Petición real al backend mediante authService
+      await registerUser({ nombre, email, password });
 
       setSuccessMessage('¡Registro exitoso! Redirigiendo al inicio de sesión...');
-      
+
+      // Timeout para permitir que el usuario visualice el mensaje de éxito antes de redirigir
       setTimeout(() => {
         navigate('/login');
       }, 1500);
 
     } catch (error) {
-      setErrorMessage(error.message || 'El correo ya se encuentra registrado.');
+      setErrorMessage(error.message || 'Error al registrar usuario. Verifique los datos ingresados.');
     } finally {
       setIsLoading(false);
     }
@@ -68,11 +61,23 @@ export const RegisterPage = () => {
         </div>
 
         <h2>Registro de Usuario</h2>
-        
+
         {errorMessage && <div style={styles.errorAlert}>{errorMessage}</div>}
         {successMessage && <div style={styles.successAlert}>{successMessage}</div>}
 
         <form onSubmit={handleRegister}>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Nombre Completo:</label>
+            <input
+              type="text"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ej. Juan Pérez"
+              required
+              style={styles.input}
+            />
+          </div>
+
           <div style={styles.formGroup}>
             <label style={styles.label}>Correo Institucional:</label>
             <input
@@ -99,7 +104,6 @@ export const RegisterPage = () => {
             <small style={styles.hint}>Mínimo 8 caracteres, 1 mayúscula y 1 número.</small>
           </div>
 
-          {/* Nuevo campo de Confirmar Contraseña */}
           <div style={styles.formGroup}>
             <label style={styles.label}>Confirmar Contraseña:</label>
             <input

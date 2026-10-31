@@ -15,15 +15,6 @@ export const ForgotPasswordPage = () => {
     setMessage('');
     setErrorMessage('');
 
-    // Validar correo institucional
-    const dominiosValidos = ['@miumg.edu.gt', '@mineduc.gob.gt', '@usac.edu.gt'];
-    const esDominioValido = dominiosValidos.some(dominio => email.toLowerCase().endsWith(dominio));
-
-    if (!esDominioValido) {
-      setErrorMessage('Error: Ingrese su correo institucional registrado (.edu.gt / .gob.gt).');
-      return;
-    }
-
     setIsLoading(true);
 
     try {

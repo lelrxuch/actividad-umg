@@ -1,10 +1,58 @@
-// [EN PROGRESO]
-// Acceso a datos de Usuario (necesario para recuperar contraseña)
+// Acceso a datos de Usuario.
 import { pool } from '../config/db.js';
 
 export async function findByEmail(email) {
   const result = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
   return result.rows[0] || null;
+}
+
+/**
+ * Busca un usuario por su identificador, sin datos de credenciales.
+ * @param {number} id
+ * @returns {Promise<{id: number, nombre: string, email: string, rol: string}|null>}
+ */
+export async function findById(id) {
+  const result = await pool.query('SELECT id, nombre, email, rol FROM usuarios WHERE id = $1', [id]);
+  return result.rows[0] || null;
+}
+
+/**
+ * Los usuarios de un rol, ordenados por nombre.
+ *
+ * Las columnas se nombran una por una, nunca `SELECT *`: esta lista sale tal
+ * cual al cliente y no puede arrastrar password_hash ni el token de
+ * recuperación.
+ *
+ * @param {string} rol
+ * @returns {Promise<Array<{id: number, nombre: string, email: string}>>}
+ */
+export async function listarPorRol(rol) {
+  const result = await pool.query(
+    'SELECT id, nombre, email FROM usuarios WHERE rol = $1 ORDER BY nombre ASC, id ASC',
+    [rol]
+  );
+  return result.rows;
+}
+
+/**
+ * Inserta un usuario nuevo.
+ *
+ * `nombre` es NOT NULL en el esquema, por eso es obligatorio aquí. No devuelve
+ * password_hash: nada fuera de este módulo necesita verlo.
+ *
+ * @param {string} nombre
+ * @param {string} email Ya normalizado por el service.
+ * @param {string} passwordHash Hash de bcrypt, nunca la contraseña en claro.
+ * @returns {Promise<{id: number, nombre: string, email: string, rol: string, creado_en: Date}>}
+ */
+export async function crearUsuario(nombre, email, passwordHash) {
+  const result = await pool.query(
+    `INSERT INTO usuarios (nombre, email, password_hash)
+     VALUES ($1, $2, $3)
+     RETURNING id, nombre, email, rol, creado_en`,
+    [nombre, email, passwordHash]
+  );
+  return result.rows[0];
 }
 
 export async function saveResetToken(userId, tokenHash, expiraEn) {

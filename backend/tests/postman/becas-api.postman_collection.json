@@ -1,0 +1,875 @@
+{
+  "info": {
+    "_postman_id": "75fb8fb5-373e-4799-b909-6aee606719ed",
+    "name": "Becas API - Integración",
+    "description": "Colección de pruebas de integración para la Plataforma Nacional de Gestión de Becas.\n\nCómo correrla:\n1. Levantar el backend (npm run dev) con la base de datos local activa.\n2. Importar esta colección en Postman.\n3. Correr la carpeta completa en orden. Antes de reset-password, copiar el token de recuperación de la consola del servidor (forgot-password no lo devuelve) a la variable reset_token.\n\nPendientes conocidos:\n- Los endpoints /api/auth/registro y /api/auth/login todavía no existen (PR #6 en progreso). Cuando entren, hay que agregar un pre-request de login que llene la variable jwt_token automáticamente.\n- Mientras tanto, la petición de perfil requiere pegar un JWT válido a mano en la variable jwt_token.\n\nAsignación de evaluadores (POST /api/solicitudes/:id/evaluadores):\n- admin_jwt_token: JWT de un usuario con rol administrador (el rol se da por SQL y el token se pide después, porque viaja en el JWT).\n- solicitud_id: una solicitud en estado Enviada o En Evaluación (en cualquier otro estado responde 409); evaluador_id: un usuario con rol evaluador que aún no esté asignado a ella; estudiante_id: cualquier usuario con rol estudiante.\n- Correr Success antes de \"Ya asignado\": el 409 depende de la asignación que hace Success.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "58175203"
+  },
+  "item": [
+    {
+      "name": "GET /health - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Devuelve status ok', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('status', 'ok');",
+              "});",
+              "",
+              "pm.test('BD conectada', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('db', 'connected');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/auth/forgot-password - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Devuelve mensaje de confirmación', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('message');",
+              "});",
+              "",
+              "// El token de recuperacion NUNCA viaja en la respuesta: antes salia como",
+              "// tokenDebug y permitia cambiar la contrasena de cualquier cuenta. Para",
+              "// encadenar reset-password, copiar el token de la consola del servidor",
+              "// (solo se muestra fuera de produccion) a la variable reset_token.",
+              "pm.test('No devuelve el token de recuperacion', () => {",
+              "  const cuerpo = pm.response.json();",
+              "  pm.expect(cuerpo).to.not.have.property('tokenDebug');",
+              "  pm.expect(Object.keys(cuerpo)).to.eql(['message']);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"email\": \"juan@miumg.edu.gt\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/forgot-password",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "forgot-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/auth/forgot-password - Error (Email vacío)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Devuelve mensaje de error', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"email\": \"\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/forgot-password",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "forgot-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/auth/reset-password - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Devuelve mensaje de éxito', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('message');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"token\": \"{{reset_token}}\",\r\n  \"nuevaContrasena\": \"NuevaPass123\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/reset-password",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "reset-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/auth/reset-password - Error (Token inválido)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Devuelve error de token inválido', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"token\": \"token-expirado-o-invalido\",\r\n  \"nuevaContrasena\": \"NuevaPass123\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/reset-password",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "reset-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/auth/reset-password - Error (Contraseña débil)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Rechaza contraseña sin mayúscula ni número', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"token\": \"{{reset_token}}\",\r\n  \"nuevaContrasena\": \"debilucha\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/reset-password",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "reset-password"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PUT /api/usuarios/:id/perfil - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Devuelve mensaje de éxito', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('mensaje');",
+              "});",
+              "",
+              "pm.test('Devuelve el usuario actualizado', () => {",
+              "  const usuario = pm.response.json().usuario;",
+              "  pm.expect(usuario).to.be.an('object');",
+              "  pm.expect(usuario).to.have.property('nombre', 'Juan Pérez Actualizado');",
+              "});",
+              "",
+              "// El controller desestructura correoAlterno (camelCase) del body, pero la",
+              "// columna en la base se llama correo_alterno. Esta aserción comprueba que el",
+              "// valor realmente llegó hasta la base: si alguien cambia el nombre del campo",
+              "// en un lado y no en el otro, la prueba falla en vez de pasar en falso.",
+              "pm.test('El correo alterno sí se guardó', () => {",
+              "  const usuario = pm.response.json().usuario;",
+              "  pm.expect(usuario.correo_alterno).to.eql('juan.nuevo@miumg.edu.gt');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"nombre\": \"Juan Pérez Actualizado\",\r\n  \"telefono\": \"87654321\",\r\n  \"correoAlterno\": \"juan.nuevo@miumg.edu.gt\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/usuarios/1/perfil",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "usuarios",
+            "1",
+            "perfil"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PUT /api/usuarios/:id/perfil - Error (Teléfono inválido)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Rechaza teléfono que no tiene 8 dígitos', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"telefono\": \"123\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/usuarios/1/perfil",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "usuarios",
+            "1",
+            "perfil"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PUT /api/usuarios/:id/perfil - Error (Sin token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 401 Unauthorized', () => {",
+              "  pm.response.to.have.status(401);",
+              "});",
+              "",
+              "pm.test('Devuelve error de autenticación', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"nombre\": \"Juan Intento\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/usuarios/1/perfil",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "usuarios",
+            "1",
+            "perfil"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET /api/usuarios/evaluadores - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 OK', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const evaluadores = pm.response.json();",
+              "",
+              "pm.test('Devuelve un arreglo de { id, nombre, email }', () => {",
+              "  pm.expect(evaluadores).to.be.an('array');",
+              "  evaluadores.forEach((e) => pm.expect(Object.keys(e).sort()).to.eql(['email', 'id', 'nombre']));",
+              "});",
+              "",
+              "pm.test('Nunca devuelve password_hash', () => {",
+              "  pm.expect(pm.response.text()).to.not.include('password_hash');",
+              "});",
+              "",
+              "// Si evaluador_id está vacío, se llena con el primero de la lista para la",
+              "// asignación que sigue. Si ya tiene valor no se toca: puede estar elegido a",
+              "// propósito (un evaluador que aún no esté asignado a solicitud_id).",
+              "if (!pm.collectionVariables.get('evaluador_id') && evaluadores.length > 0) {",
+              "  pm.collectionVariables.set('evaluador_id', evaluadores[0].id);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/usuarios/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "usuarios",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET /api/usuarios/evaluadores - Error (No es administrador)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 403 Forbidden', () => {",
+              "  pm.response.to.have.status(403);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/usuarios/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "usuarios",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET /api/usuarios/evaluadores - Error (Sin token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 401 Unauthorized', () => {",
+              "  pm.response.to.have.status(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/usuarios/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "usuarios",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/solicitudes/:id/evaluadores - Success",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201 Created', () => {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('Devuelve la solicitud y el evaluador asignado', () => {",
+              "  const cuerpo = pm.response.json();",
+              "  pm.expect(cuerpo.solicitudId).to.eql(Number(pm.collectionVariables.get('solicitud_id')));",
+              "  pm.expect(cuerpo.evaluador.id).to.eql(Number(pm.collectionVariables.get('evaluador_id')));",
+              "  pm.expect(cuerpo.evaluador).to.not.have.property('password_hash');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"evaluadorId\": {{evaluador_id}}\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "solicitudes",
+            "{{solicitud_id}}",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/solicitudes/:id/evaluadores - Error (Ya asignado)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 409 Conflict', () => {",
+              "  pm.response.to.have.status(409);",
+              "});",
+              "",
+              "pm.test('Devuelve el motivo en error', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"evaluadorId\": {{evaluador_id}}\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "solicitudes",
+            "{{solicitud_id}}",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/solicitudes/:id/evaluadores - Error (No es administrador)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 403 Forbidden', () => {",
+              "  pm.response.to.have.status(403);",
+              "});",
+              "",
+              "pm.test('Devuelve el motivo en error', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"evaluadorId\": {{evaluador_id}}\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "solicitudes",
+            "{{solicitud_id}}",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/solicitudes/:id/evaluadores - Error (Solicitud inexistente)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 404 Not Found', () => {",
+              "  pm.response.to.have.status(404);",
+              "});",
+              "",
+              "pm.test('Devuelve el motivo en error', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"evaluadorId\": {{evaluador_id}}\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/solicitudes/2147483647/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "solicitudes",
+            "2147483647",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /api/solicitudes/:id/evaluadores - Error (No es evaluador)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 Bad Request', () => {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Devuelve el motivo en error', () => {",
+              "  pm.expect(pm.response.json()).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{admin_jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"evaluadorId\": {{estudiante_id}}\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/evaluadores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "solicitudes",
+            "{{solicitud_id}}",
+            "evaluadores"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:4000",
+      "type": "string"
+    },
+    {
+      "key": "reset_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "solicitud_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "evaluador_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "estudiante_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
