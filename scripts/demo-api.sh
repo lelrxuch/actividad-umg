@@ -335,6 +335,47 @@ else
     comparar "con las dos, queda Aprobada"      "Aprobada" "$(estado_de "$GRANDE")"
     APROB=$(curl -s "$API/api/solicitudes/$GRANDE" -H "Authorization: Bearer $TK_DUENO" | grep -o '"etapa":"[a-z]*"' | tr '\n' ' ')
     comparar "quedan registradas las dos aprobaciones" '"etapa":"evaluacion" "etapa":"autorizacion" ' "$APROB"
+
+    t "15d. Auditoría (GET /api/auditoria) — solo administrador, inmutable"
+    AUDIT=$(curl -s "$API/api/auditoria?solicitudId=$GRANDE" -H "Authorization: Bearer $TK_ADMIN")
+    cuantas() { echo "$AUDIT" | grep -o "\"operacion\":\"$1\"" | wc -l | tr -d ' '; }
+    echo "   Todo lo que le pasó a la solicitud #$GRANDE, cada cosa con su autor y su fecha:"
+    comparar "3 documentos subidos"          "3" "$(cuantas subida_documento)"
+    comparar "1 cambio de monto"             "1" "$(cuantas cambio_monto)"
+    comparar "1 validación de identidad"     "1" "$(cuantas validacion_identidad)"
+    comparar "1 asignación de evaluador"     "1" "$(cuantas asignacion_evaluador)"
+    comparar "4 cambios de estado"           "4" "$(cuantas cambio_estado)"
+    comparar "2 aprobaciones (una por etapa)" "2" "$(cuantas aprobacion)"
+    echo "   Los intentos rechazados (403 y 409) no cambiaron nada, así que no dejan registro."
+    comparar "lo más reciente primero: la autorización" "aprobacion" \
+      "$(echo "$AUDIT" | grep -o '"operacion":"[a-z_]*"' | head -1 | cut -d'"' -f4)"
+    case "$AUDIT" in
+      *'"detalle":{"antes":null,"campo":"monto_solicitado","despues":15000}'*) ok "el monto guarda el dato, su valor anterior y el nuevo" ;;
+      *) mal "el cambio de monto no dice qué cambió" ;;
+    esac
+    case "$AUDIT" in
+      *"$CUI_ANA"*|*password_hash*) mal "la auditoría expone el CUI completo o un hash" ;;
+      *'*********0101'*) ok "sin secretos: el CUI va enmascarado" ;;
+      *) mal "no aparece el CUI enmascarado" ;;
+    esac
+    comparar "la administradora consulta"   "200" "$(codigo "$API/api/auditoria" -H "Authorization: Bearer $TK_ADMIN")"
+    comparar "un estudiante consulta"       "403" "$(codigo "$API/api/auditoria" -H "Authorization: Bearer $TK_DUENO")"
+    comparar "un evaluador consulta"        "403" "$(codigo "$API/api/auditoria" -H "Authorization: Bearer $TK_EV_SI")"
+    comparar "la autoridad consulta"        "403" "$(codigo "$API/api/auditoria" -H "Authorization: Bearer $TK_AUT")"
+    comparar "sin sesión"                   "401" "$(codigo "$API/api/auditoria")"
+    comparar "filtro inválido"              "400" "$(codigo "$API/api/auditoria?solicitudId=abc" -H "Authorization: Bearer $TK_ADMIN")"
+    echo "   Inmutable en la base: ni la propia aplicación puede cambiar o borrar un registro."
+    ANTES=$($PSQL -Atc "SELECT count(*) FROM auditoria" 2>/dev/null)
+    inmutable() {  # inmutable "descripción" "SQL": la base tiene que rechazarlo
+      case "$($PSQL -c "$2" 2>&1)" in
+        *"no se modifica ni se elimina"*) ok "$1 → rechazado por la base" ;;
+        *) mal "$1 → la base lo permitió" ;;
+      esac
+    }
+    inmutable "UPDATE de un registro"  "UPDATE auditoria SET operacion='otra' WHERE solicitud_id=$GRANDE"
+    inmutable "DELETE de un registro"  "DELETE FROM auditoria WHERE solicitud_id=$GRANDE"
+    inmutable "TRUNCATE de la tabla"   "TRUNCATE auditoria"
+    comparar "no se perdió ningún registro" "$ANTES" "$($PSQL -Atc "SELECT count(*) FROM auditoria" 2>/dev/null)"
   fi
 fi
 

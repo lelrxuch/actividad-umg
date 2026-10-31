@@ -38,4 +38,15 @@ describe('DashboardPage', () => {
     renderConRouter(<DashboardPage />);
     expect(screen.queryByRole('link', { name: 'Solicitudes por autorizar' })).not.toBeInTheDocument();
   });
+
+  it('el enlace a la auditoría es solo para el administrador', () => {
+    localStorage.setItem('user', JSON.stringify({ nombre: 'Admin', rol: 'administrador' }));
+    const { unmount } = renderConRouter(<DashboardPage />);
+    expect(screen.getByRole('link', { name: 'Auditoría' })).toHaveAttribute('href', '/admin/auditoria');
+    unmount();
+
+    localStorage.setItem('user', JSON.stringify({ nombre: 'Autoridad', rol: 'autorizador' }));
+    renderConRouter(<DashboardPage />);
+    expect(screen.queryByRole('link', { name: 'Auditoría' })).not.toBeInTheDocument();
+  });
 });

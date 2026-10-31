@@ -7,6 +7,7 @@
 // tipo, nombre_archivo, ruta_archivo, creado_en) y `solicitud_evaluadores`
 // (solicitud_id, evaluador_id).
 import { pool } from '../config/db.js';
+import { db } from '../config/transaccion.js';
 
 /**
  * Metadatos de un documento, sin su contenido.
@@ -65,7 +66,8 @@ export async function evaluadoresDeSolicitud(solicitudId) {
  * @returns {Promise<object>} La fila creada, en camelCase.
  */
 export async function crear({ solicitudId, estudianteId, tipo, nombreArchivo, rutaArchivo }) {
-  const resultado = await pool.query(
+  // db(): se crea dentro de la transacción que también lo audita.
+  const resultado = await db().query(
     `INSERT INTO documentos (solicitud_id, estudiante_id, tipo, nombre_archivo, ruta_archivo)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING id,

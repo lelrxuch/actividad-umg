@@ -49,6 +49,9 @@ export const DashboardPage = () => {
         {esAdmin && (
           <Link to="/admin/asignaciones" style={styles.link}>Asignar evaluadores</Link>
         )}
+        {esAdmin && (
+          <Link to="/admin/auditoria" style={styles.link}>Auditoría</Link>
+        )}
       </div>
 
       <button type="button" onClick={handleLogout} style={styles.button}>

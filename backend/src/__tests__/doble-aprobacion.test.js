@@ -55,6 +55,12 @@ vi.mock('../config/transaccion.js', () => ({
   db: () => ({}),
 }));
 
+// R3: cada operación se audita. Esta suite no ejecuta SQL.
+vi.mock('../repositories/auditoria.repository.js', () => ({
+  registrar: vi.fn(async () => ({ id: 1 })),
+  listar: vi.fn(async () => []),
+}));
+
 const DUENO = { id: 3, rol: 'estudiante' };
 const EVALUADOR = { id: 77, rol: 'evaluador' };
 const AUTORIZADOR = { id: 88, rol: 'autorizador' };

@@ -119,7 +119,7 @@ export async function listarAsignadasA(evaluadorId) {
  * @returns {Promise<boolean>} true si se asignó, false si ya lo estaba.
  */
 export async function asignarEvaluador(solicitudId, evaluadorId) {
-  const resultado = await pool.query(
+  const resultado = await db().query(
     `INSERT INTO solicitud_evaluadores (solicitud_id, evaluador_id)
      VALUES ($1, $2)
      ON CONFLICT DO NOTHING

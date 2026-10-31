@@ -49,6 +49,12 @@ vi.mock('../repositories/aprobacion.repository.js', () => ({
   listarDeSolicitud: vi.fn(async () => []),
 }));
 
+// R3: cada operación se audita. Esta suite no ejecuta SQL.
+vi.mock('../repositories/auditoria.repository.js', () => ({
+  registrar: vi.fn(async () => ({ id: 1 })),
+  listar: vi.fn(async () => []),
+}));
+
 /** El estudiante dueño de la solicitud de prueba. */
 const DUENO_ID = 3;
 /** El evaluador asignado: es quien provoca el cambio, no quien recibe el aviso. */
