@@ -242,9 +242,10 @@ flowchart TB
 |---|---|---|
 | **Estudiante** | Primario | Solicita una beca, arma su expediente y consulta su resolución |
 | **Evaluador** | Primario | Revisa los expedientes que le fueron asignados y emite su dictamen |
-| **Administrador** | Primario | Publica convocatorias, conforma comités y resuelve las adjudicaciones. Es el rol que ejerce MINEDUC |
+| **Administrador** | Primario | Publica convocatorias, conforma comités y resuelve las adjudicaciones. Es el rol que ejerce MINEDUC. Es el único que consulta la auditoría |
+| **Autoridad autorizadora** | Primario | Da la segunda aprobación a las solicitudes de más de Q10,000 (requerimiento R1). No puede ser quien dio la primera |
 | **Servicio de Identidad (RENAP)** | Secundario | Confirma que el CUI del solicitante corresponde a una persona real |
-| **Transporte de correo** | Secundario | Entrega las notificaciones de cambio de estado |
+| **Canal de notificación** | Secundario | Entrega los avisos de cambio de estado. Hoy: la bandeja de notificaciones en la aplicación (R2); el correo queda como canal opcional |
 
 Los dos actores secundarios son sistemas, no personas, y el sistema los consume a
 través de interfaces, de modo que ambos son sustituibles (sección 2.4).
@@ -259,8 +260,9 @@ flowchart LR
     EST(("Estudiante"))
     EVA(("Evaluador"))
     ADM(("Administrador"))
+    AUT(("Autoridad<br/>autorizadora"))
     RENAP(("RENAP"))
-    MAIL(("Correo"))
+    MAIL(("Canal de<br/>notificación"))
 
     subgraph CUENTAS["Gestión de cuentas"]
         CU01(["CU-01 Registrarse"])
@@ -303,6 +305,12 @@ flowchart LR
         CU23(["CU-23 Ranquear por puntaje"])
         CU24(["CU-24 Aprobar o rechazar"])
         CU25(["CU-25 Notificar al estudiante"])
+        CU27(["CU-27 Autorizar solicitud de más de Q10,000"])
+        CU28(["CU-28 Consultar mis notificaciones"])
+    end
+
+    subgraph AUD["Auditoría"]
+        CU29(["CU-29 Consultar auditoría"])
     end
 
     subgraph REP["Reportes"]
@@ -320,6 +328,7 @@ flowchart LR
     EST --- CU14
     EST --- CU15
     EST --- CU16
+    EST --- CU28
 
     EVA --- CU02
     EVA --- CU16
@@ -338,21 +347,26 @@ flowchart LR
     ADM --- CU23
     ADM --- CU24
     ADM --- CU26
+    ADM --- CU29
+
+    AUT --- CU02
+    AUT --- CU16
+    AUT --- CU27
 
     CU12 -. "«include»" .-> CU11
     CU12 -. "«include»" .-> CU15
     CU11 --- RENAP
     CU22 -. "«include»" .-> CU25
     CU24 -. "«include»" .-> CU25
+    CU27 -. "«include»" .-> CU25
     CU25 --- MAIL
 
     classDef listo fill:#d4edda,stroke:#28a745,color:#14532d
     classDef parcial fill:#fff3cd,stroke:#d39e00,color:#5c4500
     classDef falta fill:#e9ecef,stroke:#adb5bd,color:#495057
 
-    class CU01,CU02,CU03,CU04,CU05,CU06,CU07,CU08,CU09,CU10,CU11,CU12,CU13,CU14,CU15,CU16,CU22 listo
-    class CU25 parcial
-    class CU17,CU18,CU19,CU20,CU21,CU23,CU24,CU26 falta
+    class CU01,CU02,CU03,CU04,CU05,CU06,CU07,CU08,CU09,CU10,CU11,CU12,CU13,CU14,CU15,CU16,CU18,CU20,CU22,CU25,CU27,CU28,CU29 listo
+    class CU17,CU19,CU21,CU23,CU24,CU26 falta
 ```
 
 ### 3.3 Detalle de los casos de uso
@@ -541,24 +555,32 @@ se da el contrato acordado, que es lo que se usará al implementarlos.
 
 #### Comités · *Pendientes*
 
-**CU-17 — Crear comité**, **CU-18 — Asignar evaluadores**, **CU-19 — Repartir solicitudes**
+**CU-18 — Asignar evaluadores** · *Implementado* · `POST /api/solicitudes/:id/evaluadores`
 
 | | |
 |---|---|
 | **Actor** | Administrador |
-| **Estado** | Sin código. La tabla `solicitud_evaluadores` ya existe y es la que consulta el Proxy, de modo que la asignación hoy se siembra por SQL |
+| **Precondición** | La solicitud está `Enviada` o `En Evaluación` (lo decide el estado, `admiteEvaluadores`) |
+| **Flujos alternativos** | Otro rol → **403** · El usuario no es evaluador → **400** · Ya asignado → **409** · Otro estado → **409** |
+| **Postcondición** | La asignación queda en `solicitud_evaluadores` y en la auditoría, en la misma transacción |
+
+**CU-17 — Crear comité**, **CU-19 — Repartir solicitudes** · *Pendientes*
+
+| | |
+|---|---|
+| **Actor** | Administrador |
+| **Estado** | Sin código. La asignación individual (CU-18) ya existe |
 | **Reglas acordadas** | Un comité necesita **al menos dos** evaluadores para recibir solicitudes · Un evaluador no puede estar dos veces en el mismo comité · **Un evaluador no puede recibir su propia solicitud** si además es estudiante |
 | **Dependencia** | Bloquea CU-20 y CU-21 |
 
 #### Evaluación y resolución
 
-**CU-20 — Bandeja del evaluador** · *Pendiente*
+**CU-20 — Bandeja del evaluador** · *Implementado* · `GET /api/solicitudes/asignadas`
 
 | | |
 |---|---|
-| **Actor** | Evaluador |
-| **Flujo esperado** | Lista las solicitudes que le fueron asignadas y le faltan por evaluar |
-| **Dependencia** | CU-19 |
+| **Actores** | Evaluador, Autoridad autorizadora, Administrador |
+| **Flujo principal** | El evaluador ve las solicitudes que tiene asignadas; la autoridad, las que están en `Pendiente de Autorización`; el administrador, todas las que esperan revisión. Cada una trae sus `accionesPermitidas` |
 
 **CU-21 — Registrar evaluación** · *Pendiente*
 
@@ -576,7 +598,7 @@ se da el contrato acordado, que es lo que se usará al implementarlos.
 | **Precondición** | Para evaluar: la solicitud está `Enviada`. Para dictaminar: está `En Evaluación` |
 | **Flujo principal** | 1. El sistema autoriza: **rol `evaluador` y asignado a esta solicitud**.<br>2. Transiciona `Enviada → En Evaluación`, o `En Evaluación → Aprobada`/`Rechazada`.<br>3. Notifica al estudiante (CU-25) |
 | **Flujos alternativos** | **1a.** El actor no es evaluador → **403** `Solo un evaluador asignado puede evaluar o dictaminar la solicitud.`<br>**1b.** Es evaluador pero no de esta solicitud → **403** `No está asignado como evaluador de esta solicitud.`<br>**2a.** La solicitud está en otro estado → **409** |
-| **Postcondición** | La solicitud queda en `Aprobada` o `Rechazada`, **estados finales que no admiten ninguna acción** |
+| **Postcondición** | La solicitud queda en `Aprobada` o `Rechazada`, **estados finales que no admiten ninguna acción**. Si el monto pasa de Q10,000 y el dictamen es favorable, queda en `Pendiente de Autorización` (CU-27). El dictamen queda en `aprobaciones` y en la auditoría, en la misma transacción que el estado |
 | **El orden de las revisiones es deliberado** | Primero **quién**, después **en qué estado**. Un estudiante que pide un dictamen sobre su propio `Borrador` recibe **403, no 409**: devolverle 409 le informaría que la acción le estaría permitida en otro estado, lo cual es falso. El 409 del patrón State solo aparece cuando quien pide la acción **sí tiene derecho a ella** |
 | **Antecedente** | Este caso de uso contenía el defecto crítico del proyecto: antes de la corrección de SCRUM-35, **cualquier** usuario con sesión podía dictaminar **cualquier** solicitud por su identificador, de modo que un estudiante podía aprobar su propia beca. Se reprodujo contra PostgreSQL real antes y después del arreglo |
 
@@ -588,16 +610,43 @@ se da el contrato acordado, que es lo que se usará al implementarlos.
 | **Reglas acordadas** | **No se puede aprobar más allá del cupo de la convocatoria** · Un rechazo exige **motivo escrito** · La decisión es **irreversible** |
 | **Nota** | La irreversibilidad ya la garantiza el patrón State: `Aprobada` y `Rechazada` son finales. Lo que falta es el cupo, el motivo y el ordenamiento por puntaje |
 
-**CU-25 — Notificar al estudiante** · *Parcial*
+**CU-25 — Notificar al estudiante** · *Implementado* (R2)
 
 | | |
 |---|---|
-| **Actores** | Sistema (iniciador), Transporte de correo (secundario) |
-| **Flujo principal** | 1. Una transición se completa.<br>2. El sistema avisa a sus observadores.<br>3. `EmailNotificationListener` compone el aviso y lo entrega al transporte |
-| **Flujo alternativo** | **3a.** El envío falla → se registra y **la transición se mantiene**. La notificación no puede deshacer un cambio de estado ya persistido |
-| **Patrón aplicado** | **Observer**. El transporte se inyecta, así que en pruebas es una función espía y en producción sería un servidor de correo |
-| **Lo que falta** | El transporte real. Hoy, si no se inyecta uno, el aviso no se envía a ninguna parte |
-| **Regla que se verifica** | Si la transición es **rechazada**, no se notifica a nadie. Solo un cambio efectivo genera aviso |
+| **Actores** | Sistema (iniciador), Canal de notificación (secundario) |
+| **Flujo principal** | 1. Una transición se completa y **se guarda**.<br>2. Solo entonces el sistema avisa a sus observadores.<br>3. `NotificacionRegistradaListener` registra el aviso en `notificaciones`, dirigido al estudiante dueño, y lo entrega por su canal |
+| **Flujo alternativo** | **3a.** La entrega falla, de forma síncrona o asíncrona → queda registrada con su error y **la transición se mantiene** |
+| **Patrón aplicado** | **Observer**. Un canal nuevo (correo, SMS) es otro observador: no se toca `solicitud.service.js` |
+| **Regla que se verifica** | Si la transición es **rechazada**, no se notifica a nadie. El aviso va al dueño, no a quien provocó el cambio |
+
+**CU-27 — Autorizar solicitud de más de Q10,000** · *Implementado* (R1) · `POST /api/solicitudes/:id/autorizacion`
+
+| | |
+|---|---|
+| **Actor** | Autoridad autorizadora |
+| **Precondición** | La solicitud está en `Pendiente de Autorización`: el evaluador ya la aprobó |
+| **Flujo principal** | 1. El sistema autoriza: **rol `autorizador`** y **no es quien aprobó la evaluación**.<br>2. Transiciona a `Aprobada` o `Rechazada`.<br>3. Registra la decisión en `aprobaciones` y en la auditoría, en la misma transacción.<br>4. Notifica al estudiante (CU-25) |
+| **Flujos alternativos** | **1a.** Otro rol, incluido el administrador → **403**.<br>**1b.** Fue quien aprobó la evaluación → **403** `La misma persona no puede dar las dos aprobaciones.`<br>**2a.** La solicitud está en otro estado → **409** |
+| **Regla que se verifica** | Q10,000 exactos no requieren esta autorización; el umbral es estricto |
+
+**CU-28 — Consultar mis notificaciones** · *Implementado* (R2) · `GET /api/notificaciones`, `PATCH /api/notificaciones/:id/leida`
+
+| | |
+|---|---|
+| **Actor** | Cualquier usuario con sesión |
+| **Regla que se verifica** | El dueño sale del token y el filtro va en la consulta SQL: un aviso ajeno responde **404**, igual que uno inexistente |
+
+#### Auditoría
+
+**CU-29 — Consultar auditoría** · *Implementado* (R3) · `GET /api/auditoria`
+
+| | |
+|---|---|
+| **Actor** | Administrador |
+| **Flujo principal** | Lista quién hizo qué, sobre qué solicitud, cuándo y qué dato cambió, del más reciente al más viejo. Filtrable por solicitud |
+| **Flujos alternativos** | Otro rol → **403** · Filtro inválido → **400** |
+| **Reglas que se verifican** | El registro se escribe en la misma transacción que la operación auditada · La base rechaza UPDATE, DELETE y TRUNCATE · No guarda contraseñas ni tokens; el CUI va enmascarado |
 
 #### Reportes
 
@@ -644,11 +693,33 @@ classDiagram
     class Solicitud {
         +int id
         +string tipo
+        +decimal montoSolicitado
         +IEstadoSolicitud estado
         +accionesPermitidas()
         +enviar()
         +evaluar()
-        +dictaminar(aprobado)
+        +dictaminar(aprobado, requiereAutorizacion)
+        +autorizar(aprobado)
+    }
+
+    class Aprobacion {
+        +string etapa
+        +string resultado
+        +datetime creadoEn
+    }
+
+    class Notificacion {
+        +string estadoAnterior
+        +string estadoNuevo
+        +string canal
+        +bool enviada
+        +datetime leidaEn
+    }
+
+    class RegistroAuditoria {
+        +string operacion
+        +json detalle
+        +datetime creadoEn
     }
 
     class Documento {
@@ -668,9 +739,16 @@ classDiagram
     Solicitud "1" *-- "0..*" Documento : expediente
     Solicitud "1" --> "0..*" SolicitudEvaluador : asignada a
     Usuario "1" --> "0..*" SolicitudEvaluador : evalúa
+    Solicitud "1" --> "0..2" Aprobacion : una por etapa
+    Usuario "1" --> "0..*" Aprobacion : decide
+    Solicitud "1" --> "0..*" Notificacion : genera
+    Usuario "1" --> "0..*" Notificacion : recibe
+    Usuario "1" --> "0..*" RegistroAuditoria : autor
+    Solicitud "0..1" --> "0..*" RegistroAuditoria : sobre
 
     note for Convocatoria "La relación con Solicitud es 0..1 a propósito:\nuna convocatoria se puede borrar sin borrar\nlas solicitudes (ON DELETE SET NULL)"
     note for Documento "Composición: un documento no existe\nsin su solicitud. Índice único por\n(solicitud, tipo)"
+    note for RegistroAuditoria "Inmutable: la base rechaza UPDATE,\nDELETE y TRUNCATE. Sin cascada:\nla solicitud no se puede borrar"
 ```
 
 **Decisiones de modelado que conviene justificar:**
@@ -685,6 +763,11 @@ classDiagram
 - **`SolicitudEvaluador` es una entidad y no un simple arreglo.** Es la tabla que
   consulta el Proxy para decidir quién puede ver un expediente, de modo que la
   asignación es un hecho del dominio con consecuencias de seguridad.
+- **`Aprobacion` tiene a lo sumo dos filas por solicitud** (`UNIQUE (solicitud,
+  etapa)`): la de evaluación y, si el monto pasa de Q10,000, la de
+  autorización. Es lo que permite comprobar que no las dio la misma persona.
+- **`RegistroAuditoria` no tiene cascada.** Borrar la solicitud borraría su
+  rastro; por eso una solicitud con auditoría no se puede borrar.
 - **El rol vive en `Usuario` y no en una jerarquía de herencia.** Se evaluó
   `Estudiante`/`Evaluador`/`Administrador` como subclases y se descartó: una
   misma persona puede ser estudiante en una convocatoria y evaluador en otra, y
@@ -707,16 +790,19 @@ classDiagram
         +enviar(solicitud)
         +evaluar(solicitud)
         +dictaminar(solicitud, aprobado)
+        +autorizar(solicitud, aprobado)
     }
     class EstadoBorrador
     class EstadoEnviada
     class EstadoEnEvaluacion
+    class EstadoPendienteAutorizacion
     class EstadoAprobada
     class EstadoRechazada
 
     IEstadoSolicitud <|.. EstadoBorrador
     IEstadoSolicitud <|.. EstadoEnviada
     IEstadoSolicitud <|.. EstadoEnEvaluacion
+    IEstadoSolicitud <|.. EstadoPendienteAutorizacion
     IEstadoSolicitud <|.. EstadoAprobada
     IEstadoSolicitud <|.. EstadoRechazada
 
@@ -793,7 +879,9 @@ classDiagram
         +notificar(mensaje, contexto)
     }
     class EmailNotificationListener
+    class NotificacionRegistradaListener
     INotificacionObserver <|.. EmailNotificationListener
+    INotificacionObserver <|.. NotificacionRegistradaListener
 ```
 
 | Patrón | Categoría | Problema que resuelve | Evidencia de que no es decorativo |
@@ -803,7 +891,7 @@ classDiagram
 | **Adapter** | Estructural | El servicio de identidad habla códigos numéricos; el dominio habla de errores | El proyecto avanza **sin credenciales de RENAP**. Cambiar el cliente simulado por el real no toca service ni controller |
 | **Proxy** | Estructural | Quién puede ver un documento depende de la asignación, no solo del rol | Al denegar, **el archivo real nunca se lee del disco**. Esa es la prueba de que el Proxy interviene antes del objeto real |
 | **State** | Comportamiento | Dos ciclos de vida con transiciones restringidas | Gobierna **dos** entidades: Solicitud (6 estados, con Pendiente de Autorización para la doble aprobación) y Convocatoria (3). Un estado final devuelve `accionesPermitidas: []`, así que el cliente no replica las reglas |
-| **Observer** | Comportamiento | Avisar al estudiante sin que el aviso pueda deshacer la transición | Si el envío falla, **la transición se mantiene**. Si la transición es rechazada, **no se notifica a nadie** |
+| **Observer** | Comportamiento | Avisar al estudiante sin que el aviso pueda deshacer la transición | Se avisa **después** de guardar el estado. Si el envío falla, **la transición se mantiene**. Si la transición es rechazada, **no se notifica a nadie**. El canal en la aplicación (R2) entró como un observador nuevo, sin tocar la lógica de solicitudes |
 
 El detalle completo de cada patrón está en `docs/justificacion-patrones.md`.
 
@@ -844,12 +932,13 @@ Lo que este documento **no** diseña todavía, y lo que exigirá cuando se dise�
 | Evaluaciones (CU-20, CU-21) | Entidades `CriterioEvaluacion` y `Evaluacion`, con puntaje por criterio |
 | Resolución con cupo (CU-23, CU-24) | Motivo de rechazo en `solicitudes`, y el conteo de aprobadas contra el cupo de la convocatoria |
 | Reportes (CU-26) | Ninguna entidad nueva: son consultas de agregación sobre lo existente |
-| Frontend completo | Hoy el cliente consume 3 de los 26 endpoints |
+| Administración de convocatorias en el frontend | El backend existe (CU-05 a CU-08); falta la pantalla |
+| Roles por pantalla | Hoy `evaluador`, `autorizador` y `administrador` se asignan por SQL |
 
 Dos deudas de diseño declaradas, para que no se descubran como sorpresa:
 
-1. **Ninguna prueba automatizada ejecuta SQL** (trade-off 3). Un error de
-   consulta solo lo atrapa el recorrido manual del Nivel 3.
+1. **Las pruebas de Vitest no ejecutan SQL** (trade-off 3). Mitigado: el CI
+   corre el recorrido del Nivel 3 contra PostgreSQL en cada PR.
 2. **No hay revocación de sesiones** (trade-off 5). Un token válido lo sigue
    siendo hasta que vence.
 
