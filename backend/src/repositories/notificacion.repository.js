@@ -87,3 +87,20 @@ export async function marcarLeida(id, destinatarioId) {
 
   return resultado.rows[0] || null;
 }
+
+/**
+ * Cuántos avisos del destinatario faltan por leer, contando todos y no solo
+ * los que trae {@link listarDe}, que corta en un límite.
+ *
+ * @param {*} destinatarioId
+ * @returns {Promise<number>}
+ */
+export async function contarNoLeidas(destinatarioId) {
+  const resultado = await pool.query(
+    `SELECT count(*)::int AS total FROM notificaciones
+      WHERE destinatario_id = $1 AND leida_en IS NULL`,
+    [destinatarioId]
+  );
+
+  return resultado.rows[0]?.total ?? 0;
+}
