@@ -67,7 +67,7 @@ controllers, probarlas exigiría simular objetos `req`/`res` para cada caso, y l
 suite sería lenta y frágil.
 
 **Razón 4 — La lógica del dominio es un ciclo de vida, no un CRUD.** Una
-solicitud de beca pasa por cinco estados con transiciones restringidas, y una
+solicitud de beca pasa por seis estados con transiciones restringidas, y una
 convocatoria por tres. Eso pide una capa de dominio con identidad propia, que es
 exactamente donde viven los patrones (sección 2.6). Un CRUD plano habría
 dispersado las reglas de transición en condicionales por todo el código.
@@ -802,7 +802,7 @@ classDiagram
 | **Builder** | Creacional | Un expediente se arma por partes y solo al final se sabe si está completo | Informa **exactamente qué falta**, no solo que falta algo. Es consultable sin cerrar nada, para que el estudiante lo sepa antes de intentar enviar |
 | **Adapter** | Estructural | El servicio de identidad habla códigos numéricos; el dominio habla de errores | El proyecto avanza **sin credenciales de RENAP**. Cambiar el cliente simulado por el real no toca service ni controller |
 | **Proxy** | Estructural | Quién puede ver un documento depende de la asignación, no solo del rol | Al denegar, **el archivo real nunca se lee del disco**. Esa es la prueba de que el Proxy interviene antes del objeto real |
-| **State** | Comportamiento | Dos ciclos de vida con transiciones restringidas | Gobierna **dos** entidades: Solicitud (5 estados) y Convocatoria (3). Un estado final devuelve `accionesPermitidas: []`, así que el cliente no replica las reglas |
+| **State** | Comportamiento | Dos ciclos de vida con transiciones restringidas | Gobierna **dos** entidades: Solicitud (6 estados, con Pendiente de Autorización para la doble aprobación) y Convocatoria (3). Un estado final devuelve `accionesPermitidas: []`, así que el cliente no replica las reglas |
 | **Observer** | Comportamiento | Avisar al estudiante sin que el aviso pueda deshacer la transición | Si el envío falla, **la transición se mantiene**. Si la transición es rechazada, **no se notifica a nadie** |
 
 El detalle completo de cada patrón está en `docs/justificacion-patrones.md`.

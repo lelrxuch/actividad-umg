@@ -5,6 +5,7 @@ import {
   listarAsignadas,
   evaluarSolicitud,
   dictaminarSolicitud,
+  autorizarSolicitud,
 } from '../services/solicitudService';
 import {
   listarDocumentosPorSolicitud,
@@ -32,6 +33,7 @@ export const EvaluadorPage = () => {
 
   const rol = obtenerRolUsuario();
   const esAdmin = ['administrador', 'admin'].includes(rol);
+  const esAutorizador = rol === 'autorizador';
 
   const recargarLista = async () => {
     try {
@@ -82,8 +84,25 @@ export const EvaluadorPage = () => {
     setAviso('');
     setError('');
     try {
-      await dictaminarSolicitud(id, aprobado);
-      setAviso(`Solicitud #${id} dictaminada como ${aprobado ? 'APROBADA' : 'RECHAZADA'}.`);
+      const resultado = await dictaminarSolicitud(id, aprobado);
+      // Si supera Q10,000, aprobar no la deja Aprobada: el backend responde
+      // "Pendiente de Autorización". Se muestra lo que él dice.
+      setAviso(`Solicitud #${id}: ${resultado?.estado ?? (aprobado ? 'Aprobada' : 'Rechazada')}.`);
+      await recargarLista();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setProcesandoId(null);
+    }
+  };
+
+  const handleAutorizar = async (id, aprobado) => {
+    setProcesandoId(id);
+    setAviso('');
+    setError('');
+    try {
+      const resultado = await autorizarSolicitud(id, aprobado);
+      setAviso(`Solicitud #${id}: ${resultado?.estado ?? (aprobado ? 'Aprobada' : 'Rechazada')}.`);
       await recargarLista();
     } catch (e) {
       setError(e.message);
@@ -95,8 +114,12 @@ export const EvaluadorPage = () => {
   return (
     <section style={styles.contenedor}>
       <header style={styles.encabezado}>
-        <h1 style={styles.titulo}>Bandeja del Evaluador</h1>
-        <p style={styles.subtitulo}>Gestión y dictamen de solicitudes de beca</p>
+        <h1 style={styles.titulo}>{esAutorizador ? 'Bandeja de autorización' : 'Bandeja del Evaluador'}</h1>
+        <p style={styles.subtitulo}>
+          {esAutorizador
+            ? 'Solicitudes de más de Q10,000 que el evaluador ya aprobó y esperan su autorización'
+            : 'Gestión y dictamen de solicitudes de beca'}
+        </p>
       </header>
 
       {aviso && <div style={styles.avisoOk} role="status">{aviso}</div>}
@@ -112,6 +135,7 @@ export const EvaluadorPage = () => {
             const acciones = sol.accionesPermitidas ?? [];
             const puedeEvaluar = !esAdmin && acciones.includes('evaluar');
             const puedeDictaminar = !esAdmin && acciones.includes('dictaminar');
+            const puedeAutorizar = esAutorizador && acciones.includes('autorizar');
 
             return (
               <TarjetaSolicitud
@@ -119,9 +143,11 @@ export const EvaluadorPage = () => {
                 solicitud={sol}
                 puedeEvaluar={puedeEvaluar}
                 puedeDictaminar={puedeDictaminar}
+                puedeAutorizar={puedeAutorizar}
                 procesando={procesandoId === sol.id}
                 onEvaluar={handleEvaluar}
                 onDictaminar={handleDictaminar}
+                onAutorizar={handleAutorizar}
               />
             );
           })}
@@ -136,9 +162,11 @@ const TarjetaSolicitud = ({
   solicitud,
   puedeEvaluar,
   puedeDictaminar,
+  puedeAutorizar,
   procesando,
   onEvaluar,
   onDictaminar,
+  onAutorizar,
 }) => {
   const [documentos, setDocumentos] = useState([]);
   const [cargandoDocs, setCargandoDocs] = useState(true);
@@ -187,6 +215,12 @@ const TarjetaSolicitud = ({
       <p style={styles.detalleText}>
         <strong>Estudiante ID:</strong> {solicitud.estudiante_id || solicitud.estudiante}
       </p>
+      {solicitud.montoSolicitado != null && (
+        <p style={styles.detalleText}>
+          <strong>Monto:</strong> Q{Number(solicitud.montoSolicitado).toLocaleString('es-GT', { minimumFractionDigits: 2 })}
+          {solicitud.requiereDobleAprobacion ? ' · requiere autorización' : ''}
+        </p>
+      )}
 
       {/* Sección de expedientes/documentos */}
       <div style={styles.seccionDocumentos}>
@@ -216,6 +250,27 @@ const TarjetaSolicitud = ({
       </div>
 
       <div style={styles.acciones}>
+        {puedeAutorizar && (
+          <div style={styles.grupoDictamen}>
+            <button
+              type="button"
+              style={styles.botonAprobar}
+              disabled={procesando}
+              onClick={() => onAutorizar(solicitud.id, true)}
+            >
+              Autorizar
+            </button>
+            <button
+              type="button"
+              style={styles.botonRechazar}
+              disabled={procesando}
+              onClick={() => onAutorizar(solicitud.id, false)}
+            >
+              No autorizar
+            </button>
+          </div>
+        )}
+
         {puedeEvaluar && (
           <button
             type="button"
@@ -248,7 +303,7 @@ const TarjetaSolicitud = ({
           </div>
         )}
 
-        {!puedeEvaluar && !puedeDictaminar && (
+        {!puedeEvaluar && !puedeDictaminar && !puedeAutorizar && (
           <span style={styles.textoSinAccion}>Sin acciones pendientes</span>
         )}
       </div>

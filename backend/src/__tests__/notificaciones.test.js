@@ -35,6 +35,19 @@ vi.mock('../repositories/notificacion.repository.js', () => ({
   marcarLeida: vi.fn(),
 }));
 
+// Desde la doble aprobación, el estado y la aprobación se guardan en una
+// transacción, y la decisión de cada etapa se registra. Esta suite no ejecuta
+// SQL: la transacción solo corre el trabajo y el repositorio se mockea.
+vi.mock('../config/transaccion.js', () => ({
+  conTransaccion: async (trabajo) => trabajo(),
+  db: () => ({}),
+}));
+vi.mock('../repositories/aprobacion.repository.js', () => ({
+  ETAPAS: { EVALUACION: 'evaluacion', AUTORIZACION: 'autorizacion' },
+  registrar: vi.fn(async (decision) => decision),
+  listarDeSolicitud: vi.fn(async () => []),
+}));
+
 /** El estudiante dueño de la solicitud de prueba. */
 const DUENO_ID = 3;
 /** El evaluador asignado: es quien provoca el cambio, no quien recibe el aviso. */

@@ -233,7 +233,7 @@ Para reproducir una falla en local se corren los mismos comandos de la tabla.
 
 ## 6. La API
 
-31 endpoints. Los marcados **público** no requieren token; los demás esperan la
+33 endpoints. Los marcados **público** no requieren token; los demás esperan la
 cabecera `Authorization: Bearer <token>`.
 
 ### Autenticación
@@ -267,12 +267,22 @@ cabecera `Authorization: Bearer <token>`.
 | GET | `/api/solicitudes/tipos/:tipo/documentos` | público |
 | POST | `/api/solicitudes` | estudiante |
 | GET | `/api/solicitudes` | estudiante — las suyas |
-| GET | `/api/solicitudes/asignadas` | evaluador — las que tiene asignadas; administrador — todas las Enviadas o En Evaluación |
-| GET | `/api/solicitudes/:id` | dueño, evaluador asignado o administrador |
+| GET | `/api/solicitudes/asignadas` | evaluador — las que tiene asignadas; autorizador — las Pendiente de Autorización; administrador — todas las Enviadas, En Evaluación o Pendiente de Autorización |
+| GET | `/api/solicitudes/:id` | dueño, evaluador asignado, administrador, o autorizador si está Pendiente de Autorización. Incluye `montoSolicitado`, `requiereDobleAprobacion` y `aprobaciones` |
 | POST | `/api/solicitudes/:id/evaluadores` | administrador, solo en Enviada o En Evaluación |
-| POST | `/api/solicitudes/:id/enviar` | dueño |
+| PATCH | `/api/solicitudes/:id/monto` | dueño, solo en Borrador — `{ monto }` en quetzales, mayor que 0, dos decimales como máximo |
+| POST | `/api/solicitudes/:id/enviar` | dueño — 400 si no tiene monto |
 | POST | `/api/solicitudes/:id/evaluar` | evaluador asignado |
-| POST | `/api/solicitudes/:id/dictamen` | evaluador asignado |
+| POST | `/api/solicitudes/:id/dictamen` | evaluador asignado — si el monto pasa de Q10,000 y aprueba, queda en Pendiente de Autorización |
+| POST | `/api/solicitudes/:id/autorizacion` | autorizador, solo en Pendiente de Autorización — `{ aprobado }`; 403 si fue quien aprobó la evaluación |
+
+**Doble aprobación.** Una solicitud de más de Q10,000 necesita dos aprobaciones:
+la del evaluador (`dictamen`) y la de la autoridad autorizadora (`autorizacion`).
+Q10,000 exactos siguen el flujo de una sola aprobación. El rol `autorizador` se
+da en la base (`UPDATE usuarios SET rol='autorizador' ...`), igual que
+`evaluador` y `administrador`. Cada aprobación y su registro en `aprobaciones` se
+guardan en la misma transacción que el cambio de estado
+(`config/transaccion.js`): si una falla, no queda ninguna.
 
 ### Expedientes y documentos
 
@@ -370,8 +380,10 @@ recuperación de contraseña.
 CHECK que impide que `fecha_cierre` sea anterior a `fecha_apertura`.
 
 ### solicitudes
-`estado` acepta `Borrador`, `Enviada`, `En Evaluación`, `Aprobada` o
-`Rechazada`. `tipo` es la modalidad de beca. `convocatoria_id` es opcional, con
+`estado` acepta `Borrador`, `Enviada`, `En Evaluación`, `Pendiente de
+Autorización`, `Aprobada` o `Rechazada`. `monto_solicitado` (quetzales, nulo
+hasta que el estudiante lo fije, CHECK mayor que 0) decide si hace falta la
+segunda aprobación. `tipo` es la modalidad de beca. `convocatoria_id` es opcional, con
 `ON DELETE SET NULL`: borrar una convocatoria no borra las solicitudes.
 
 ### documentos
@@ -384,6 +396,12 @@ Qué evaluador revisa qué solicitud. Es la tabla que consulta `DocumentoProxy`
 para decidir quién puede ver un expediente. Se llena con
 `POST /api/solicitudes/:id/evaluadores`; la llave primaria
 `(solicitud_id, evaluador_id)` es la que decide el 409 de "ya asignado".
+
+### aprobaciones
+Quién aprobó o rechazó, en qué etapa (`evaluacion` o `autorizacion`) y cuándo.
+`UNIQUE (solicitud_id, etapa)`: una sola decisión por etapa. La regla de que
+la misma persona no dé las dos se valida en `solicitud.autorizacion.js` con
+esta tabla.
 
 ### notificaciones
 Un aviso por cambio de estado y por canal: la solicitud, el destinatario (el

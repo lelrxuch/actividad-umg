@@ -193,11 +193,15 @@ describe('Patrón State — ciclo de vida de una Solicitud', () => {
       expect(() => crearEstadoDesdeNombre('Archivada')).toThrow(/Estado desconocido: "Archivada"/);
     });
 
-    it('nombresDeEstado lista los cinco estados del ciclo de vida', () => {
+    it('nombresDeEstado lista los seis estados del ciclo de vida', () => {
+      // 'Pendiente de Autorización' entró con la doble aprobación de las
+      // solicitudes de mayor monto. La lista tiene que coincidir con el CHECK
+      // de solicitudes.estado en schema.sql.
       expect(nombresDeEstado()).toEqual([
         'Borrador',
         'Enviada',
         'En Evaluación',
+        'Pendiente de Autorización',
         'Aprobada',
         'Rechazada',
       ]);

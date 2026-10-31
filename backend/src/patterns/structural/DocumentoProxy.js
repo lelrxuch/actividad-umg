@@ -4,6 +4,8 @@ import { AccesoDenegadoError } from './AccesoDenegadoError.js';
 
 /** Rol con acceso irrestricto a los expedientes. */
 const ROL_ADMINISTRADOR = 'administrador';
+/** Da la segunda aprobación de las solicitudes de mayor monto. */
+const ROL_AUTORIZADOR = 'autorizador';
 
 /**
  * Patrón Proxy — Proxy de protección y de carga diferida.
@@ -38,9 +40,12 @@ export class DocumentoProxy extends IDocumento {
    * @param {Array<*>} [opciones.evaluadoresAsignados] Ids de los evaluadores de
    *   esa solicitud. Se recibe ya resuelto para que el proxy no consulte la base
    *   de datos: su responsabilidad es decidir, no averiguar.
+   * @param {boolean} [opciones.esperaAutorizacion] Si la solicitud está en
+   *   Pendiente de Autorización: la autoridad autorizadora necesita ver el
+   *   expediente que va a autorizar, y solo ese.
    * @param {(ruta: string) => Promise<Buffer|string>} [opciones.almacenamiento]
    */
-  constructor(fila, usuario, { evaluadoresAsignados = [], almacenamiento } = {}) {
+  constructor(fila, usuario, { evaluadoresAsignados = [], almacenamiento, esperaAutorizacion = false } = {}) {
     super();
 
     if (!usuario || usuario.id === undefined || usuario.id === null) {
@@ -51,6 +56,7 @@ export class DocumentoProxy extends IDocumento {
     this.usuario = usuario;
     this.evaluadoresAsignados = evaluadoresAsignados;
     this.almacenamiento = almacenamiento;
+    this.esperaAutorizacion = esperaAutorizacion;
   }
 
   /** @returns {object} Metadatos; visibles sin leer el archivo. */
@@ -71,13 +77,15 @@ export class DocumentoProxy extends IDocumento {
    * Evalúa las tres reglas de acceso.
    *
    * @returns {boolean} `true` si el solicitante es el dueño del expediente, un
-   *   evaluador asignado a esa solicitud, o un administrador.
+   *   evaluador asignado a esa solicitud, un administrador, o la autoridad
+   *   autorizadora mientras la solicitud espera su decisión.
    */
   tieneAcceso() {
     const { id, rol } = this.usuario;
 
     if (rol === ROL_ADMINISTRADOR) return true;
     if (this.fila?.estudianteId === id) return true;
+    if (rol === ROL_AUTORIZADOR) return this.esperaAutorizacion === true;
 
     return this.evaluadoresAsignados.includes(id);
   }

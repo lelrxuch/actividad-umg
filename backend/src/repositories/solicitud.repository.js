@@ -5,8 +5,9 @@
 // consulta elegía las suyas, y el listado no traía `tipo` ni
 // `convocatoria_id`: la pantalla no podía saber qué documentos pedir.
 import { pool } from '../config/db.js';
+import { db } from '../config/transaccion.js';
 
-const COLUMNAS = 'id, estudiante_id, estado, tipo, convocatoria_id, creado_en, actualizado_en';
+const COLUMNAS = 'id, estudiante_id, estado, tipo, convocatoria_id, monto_solicitado, creado_en, actualizado_en';
 
 /**
  * Busca una solicitud por su identificador.
@@ -57,7 +58,8 @@ export async function crear(estudianteId, estado, { tipo = null, convocatoriaId 
  * @param {{cui?: string}} [registro] Datos validados que acompañan la transición.
  */
 export async function actualizarEstado(id, estado, { cui = null } = {}) {
-  const resultado = await pool.query(
+  // db(): dentro de una transacción, su conexión; fuera, el pool.
+  const resultado = await db().query(
     `UPDATE solicitudes
      SET estado = $1, cui = COALESCE($3, cui), actualizado_en = NOW()
      WHERE id = $2
@@ -136,11 +138,46 @@ export async function asignarEvaluador(solicitudId, evaluadorId) {
 export async function listarEnRevision() {
   const resultado = await pool.query(
     `SELECT ${COLUMNAS} FROM solicitudes
-      WHERE estado IN ('Enviada', 'En Evaluación')
+      WHERE estado IN ('Enviada', 'En Evaluación', 'Pendiente de Autorización')
       ORDER BY creado_en ASC, id ASC`
   );
 
   return resultado.rows;
+}
+
+/**
+ * Las solicitudes en un estado dado, de la más vieja a la más nueva. Es la
+ * bandeja de la autoridad autorizadora: las que esperan su decisión.
+ * @param {string} estado
+ * @returns {Promise<Array<object>>} Filas con las columnas de COLUMNAS.
+ */
+export async function listarEnEstado(estado) {
+  const resultado = await pool.query(
+    `SELECT ${COLUMNAS} FROM solicitudes
+      WHERE estado = $1
+      ORDER BY creado_en ASC, id ASC`,
+    [estado]
+  );
+
+  return resultado.rows;
+}
+
+/**
+ * Cambia el monto solicitado. Que la solicitud siga en Borrador lo comprueba
+ * el service antes de llamar.
+ * @param {number} id
+ * @param {number} monto
+ * @returns {Promise<object|null>} La fila actualizada.
+ */
+export async function actualizarMonto(id, monto) {
+  const resultado = await db().query(
+    `UPDATE solicitudes SET monto_solicitado = $2, actualizado_en = NOW()
+      WHERE id = $1
+      RETURNING ${COLUMNAS}`,
+    [id, monto]
+  );
+
+  return resultado.rows[0] || null;
 }
 
 /**

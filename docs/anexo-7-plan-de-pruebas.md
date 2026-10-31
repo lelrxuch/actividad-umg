@@ -55,7 +55,7 @@ automatizada:
 | Autenticación y cuentas | Registro, login, perfil, validación de dominio institucional, política de contraseñas, hash bcrypt |
 | Recuperación de contraseña | Generación del token, su vencimiento, su hash en base de datos, un solo uso |
 | Convocatorias | Ciclo de vida Borrador → Publicada → Cerrada, campos exigidos para publicar, visibilidad según rol |
-| Solicitudes | Ciclo de vida de cinco estados, transiciones válidas e inválidas, modalidades de beca |
+| Solicitudes | Ciclo de vida de seis estados (con la doble aprobación de más de Q10,000), transiciones válidas e inválidas, modalidades de beca |
 | Autorización | Quién puede ver, enviar, evaluar y dictaminar cada solicitud |
 | Expedientes y documentos | Subida, lista blanca de extensiones, límite de tamaño, nombre generado por el servidor, control de acceso a la descarga |
 | Patrones de diseño | Los seis patrones, probados por separado y en su integración con los servicios |

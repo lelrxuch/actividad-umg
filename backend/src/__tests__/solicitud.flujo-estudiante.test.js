@@ -48,6 +48,19 @@ vi.mock('../repositories/notificacion.repository.js', () => ({
   marcarResultado: vi.fn(async () => {}),
 }));
 
+// Desde la doble aprobación, el estado y la aprobación se guardan en una
+// transacción, y la decisión de cada etapa se registra. Esta suite no ejecuta
+// SQL: la transacción solo corre el trabajo y el repositorio se mockea.
+vi.mock('../config/transaccion.js', () => ({
+  conTransaccion: async (trabajo) => trabajo(),
+  db: () => ({}),
+}));
+vi.mock('../repositories/aprobacion.repository.js', () => ({
+  ETAPAS: { EVALUACION: 'evaluacion', AUTORIZACION: 'autorizacion' },
+  registrar: vi.fn(async (decision) => decision),
+  listarDeSolicitud: vi.fn(async () => []),
+}));
+
 const DUENO = { id: 3, rol: 'estudiante' };
 const OTRO = { id: 9, rol: 'estudiante' };
 /** CUI que el simulador de RENAP conoce: ANA MARIA LOPEZ GARCIA. */
@@ -55,7 +68,8 @@ const CUI_ANA = '1234567890101';
 const EXPEDIENTE_COMPLETO = [{ tipo: 'dni' }, { tipo: 'titulo' }, { tipo: 'carta' }];
 
 function fila(extra = {}) {
-  return { id: 42, estudiante_id: 3, estado: 'Borrador', tipo: 'universitaria', convocatoria_id: 1, ...extra };
+  // monto_solicitado: desde la doble aprobación, sin monto no se envía.
+  return { id: 42, estudiante_id: 3, estado: 'Borrador', tipo: 'universitaria', convocatoria_id: 1, monto_solicitado: '5000.00', ...extra };
 }
 
 beforeEach(() => {
