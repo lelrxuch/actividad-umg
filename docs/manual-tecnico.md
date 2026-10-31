@@ -408,6 +408,8 @@ Un aviso por cambio de estado y por canal: la solicitud, el destinatario (el
 estudiante dueño), el estado anterior y el nuevo, el canal, el mensaje, si se
 entregó o con qué error falló, y cuándo se leyó. La fila se crea **antes** de
 intentar la entrega, para que un canal caído no pierda el evento.
+`GET /api/notificaciones` trae los 50 más recientes; `noLeidas` cuenta todos
+los no leídos con una consulta aparte.
 
 ### Cadenas que no se pueden tocar
 
