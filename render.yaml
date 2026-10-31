@@ -1,0 +1,73 @@
+# Blueprint de Render: base de datos, backend y frontend, todos en el plan gratis.
+# Render lo lee al crear un Blueprint desde el repositorio (dashboard.render.com
+# → New → Blueprint). Guía: docs/despliegue-render.md
+databases:
+  - name: becas-db
+    plan: free
+    databaseName: becas_db
+    user: becas
+
+services:
+  - type: web
+    name: becas-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # Conexión interna de Render: no usa SSL.
+      - key: DB_HOST
+        fromDatabase:
+          name: becas-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: becas-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: becas-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: becas-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: becas-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 1h
+      - key: RESET_TOKEN_EXPIRES_MIN
+        value: "30"
+      - key: ALLOWED_EMAIL_DOMAINS
+        value: miumg.edu.gt,mineduc.gob.gt,usac.edu.gt
+      # La dirección del frontend publicado, p. ej. https://becas-web.onrender.com
+      - key: CORS_ORIGIN
+        sync: false
+
+  - type: web
+    name: becas-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      # /solicitudes/3 y demás rutas de la aplicación abren index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # La API publicada, con /api al final, p. ej. https://becas-api.onrender.com/api
+      - key: VITE_API_URL
+        sync: false
