@@ -18,6 +18,7 @@ import { NotificacionRegistradaListener } from '../patterns/observer/Notificacio
 import * as notificacionRepository from '../repositories/notificacion.repository.js';
 import * as aprobacionRepository from '../repositories/aprobacion.repository.js';
 import { conTransaccion } from '../config/transaccion.js';
+import { auditar, OPERACIONES } from './auditoria.service.js';
 import { SolicitudFactory } from '../patterns/creational/SolicitudFactory.js';
 import {
   autorizar,
@@ -258,6 +259,21 @@ async function aplicarTransicion(id, accion, opciones = {}) {
       ...(registro ? [registro] : [])
     );
 
+    // R3: el cambio de estado y la validación de identidad quedan auditados
+    // en la misma transacción. Si la auditoría falla, el estado no cambia.
+    await auditar(OPERACIONES.CAMBIO_ESTADO, {
+      usuario: opciones.usuario,
+      solicitudId: fila.id,
+      detalle: { campo: 'estado', antes: fila.estado, despues: solicitud.nombreEstado },
+    });
+    if (registro?.cui) {
+      await auditar(OPERACIONES.VALIDACION_IDENTIDAD, {
+        usuario: opciones.usuario,
+        solicitudId: fila.id,
+        detalle: { cui: registro.cui, resultado: 'valida' },
+      });
+    }
+
     if (opciones.alGuardar) {
       await opciones.alGuardar(fila, opciones.usuario);
     }
@@ -414,13 +430,20 @@ export async function asignarEvaluador(solicitudId, evaluadorId, usuario) {
     );
   }
 
-  const asignado = await solicitudRepository.asignarEvaluador(fila.id, evaluador.id);
-  if (!asignado) {
-    throw errorDeNegocio(
-      `El usuario ${evaluador.id} ya está asignado como evaluador de la solicitud ${fila.id}.`,
-      409
-    );
-  }
+  await conTransaccion(async () => {
+    const asignado = await solicitudRepository.asignarEvaluador(fila.id, evaluador.id);
+    if (!asignado) {
+      throw errorDeNegocio(
+        `El usuario ${evaluador.id} ya está asignado como evaluador de la solicitud ${fila.id}.`,
+        409
+      );
+    }
+    await auditar(OPERACIONES.ASIGNACION_EVALUADOR, {
+      usuario,
+      solicitudId: fila.id,
+      detalle: { evaluadorId: evaluador.id, evaluadorNombre: evaluador.nombre },
+    });
+  });
 
   return {
     solicitudId: fila.id,
@@ -489,6 +512,19 @@ export function evaluarSolicitud(id, opciones = {}) {
 }
 
 /**
+ * Guarda la decisión de una etapa en `aprobaciones` y en la auditoría. Corre
+ * dentro de la transacción del cambio de estado.
+ */
+async function registrarDecision(fila, usuario, etapa, aprobado) {
+  await aprobacionRepository.registrar({ solicitudId: fila.id, usuarioId: usuario.id, etapa, aprobado });
+  await auditar(OPERACIONES.APROBACION, {
+    usuario,
+    solicitudId: fila.id,
+    detalle: { etapa, resultado: aprobado ? 'aprobada' : 'rechazada' },
+  });
+}
+
+/**
  * Dictamen del evaluador. Notifica al estudiante.
  *
  * En Evaluación → Aprobada | Rechazada. Si el monto supera
@@ -511,12 +547,7 @@ export function dictaminarSolicitud(id, aprobado, opciones = {}) {
       ...opciones,
       accionAutorizada: ACCIONES.DICTAMINAR,
       alGuardar: (fila, usuario) =>
-        aprobacionRepository.registrar({
-          solicitudId: fila.id,
-          usuarioId: usuario.id,
-          etapa: aprobacionRepository.ETAPAS.EVALUACION,
-          aprobado,
-        }),
+        registrarDecision(fila, usuario, aprobacionRepository.ETAPAS.EVALUACION, aprobado),
     }
   );
 }
@@ -537,12 +568,7 @@ export function autorizarSolicitud(id, aprobado, opciones = {}) {
     ...opciones,
     accionAutorizada: ACCIONES.AUTORIZAR,
     alGuardar: (fila, usuario) =>
-      aprobacionRepository.registrar({
-        solicitudId: fila.id,
-        usuarioId: usuario.id,
-        etapa: aprobacionRepository.ETAPAS.AUTORIZACION,
-        aprobado,
-      }),
+      registrarDecision(fila, usuario, aprobacionRepository.ETAPAS.AUTORIZACION, aprobado),
   });
 }
 
@@ -584,7 +610,19 @@ export async function establecerMonto(id, monto, usuario) {
     );
   }
 
-  const actualizada = await solicitudRepository.actualizarMonto(fila.id, valor);
+  const actualizada = await conTransaccion(async () => {
+    const nueva = await solicitudRepository.actualizarMonto(fila.id, valor);
+    await auditar(OPERACIONES.CAMBIO_MONTO, {
+      usuario,
+      solicitudId: fila.id,
+      detalle: {
+        campo: 'monto_solicitado',
+        antes: fila.monto_solicitado === null || fila.monto_solicitado === undefined ? null : Number(fila.monto_solicitado),
+        despues: valor,
+      },
+    });
+    return nueva;
+  });
   return formatoPublico(actualizada);
 }
 

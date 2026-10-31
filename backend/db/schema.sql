@@ -266,3 +266,41 @@ CREATE TABLE IF NOT EXISTS aprobaciones (
     creado_en    TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (solicitud_id, etapa)
 );
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Auditoría de operaciones relevantes (requerimiento nuevo R3, 30/10/2026).
+-- Quién hizo qué, sobre qué solicitud, cuándo, y qué dato cambió.
+--
+-- Se escribe en la MISMA transacción que la operación que audita: o quedan las
+-- dos o ninguna. Sin ON DELETE CASCADE: una solicitud con rastro de auditoría
+-- no se puede borrar, así que el rastro no desaparece con ella.
+CREATE TABLE IF NOT EXISTS auditoria (
+    id           BIGSERIAL PRIMARY KEY,
+    usuario_id   INTEGER NOT NULL REFERENCES usuarios(id),
+    operacion    VARCHAR(40) NOT NULL,
+    solicitud_id INTEGER REFERENCES solicitudes(id),
+    detalle      JSONB NOT NULL DEFAULT '{}'::jsonb,
+    creado_en    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_solicitud ON auditoria (solicitud_id, id);
+
+-- Inmutable: nadie, ni la propia aplicación, puede cambiar ni borrar un
+-- registro. La protección vive en la base: un defecto futuro del backend no
+-- la salta.
+CREATE OR REPLACE FUNCTION auditoria_inmutable() RETURNS trigger AS $$
+BEGIN
+    RAISE EXCEPTION 'La auditoría no se modifica ni se elimina';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS auditoria_sin_cambios ON auditoria;
+CREATE TRIGGER auditoria_sin_cambios
+    BEFORE UPDATE OR DELETE ON auditoria
+    FOR EACH ROW EXECUTE FUNCTION auditoria_inmutable();
+
+-- TRUNCATE no dispara triggers por fila: se bloquea aparte.
+DROP TRIGGER IF EXISTS auditoria_sin_truncate ON auditoria;
+CREATE TRIGGER auditoria_sin_truncate
+    BEFORE TRUNCATE ON auditoria
+    FOR EACH STATEMENT EXECUTE FUNCTION auditoria_inmutable();

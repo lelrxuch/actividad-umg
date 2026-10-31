@@ -65,12 +65,15 @@ const styles = {
   navItem: { color: '#ffffff', textDecoration: 'none', fontSize: '0.85rem', opacity: 0.9 },
   loginBtn: { backgroundColor: theme.colors.primary, color: '#ffffff', padding: '0.35rem 0.9rem', borderRadius: theme.borderRadius.md, textDecoration: 'none', fontSize: '0.82rem', fontWeight: '600' },
   
-  // Ocupa el espacio sobrante ajustado al centro
+  // Ocupa el espacio sobrante ajustado al centro. 'safe center' centra solo si
+  // el contenido cabe: con 'center' a secas, una página más alta que la
+  // ventana (la auditoría, una bandeja con muchas solicitudes) se desbordaba
+  // hacia arriba y su parte superior quedaba fuera del alcance del scroll.
   mainContent: { 
     flex: 1, 
     display: 'flex', 
     flexDirection: 'column', 
-    justifyContent: 'center', 
+    justifyContent: 'safe center', 
     alignItems: 'center',
     padding: '1rem',
     overflowY: 'auto'

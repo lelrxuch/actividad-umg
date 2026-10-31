@@ -10,6 +10,8 @@ import * as solicitudRepository from '../repositories/solicitud.repository.js';
 import { DocumentoProxy } from '../patterns/structural/DocumentoProxy.js';
 import { SolicitudFactory } from '../patterns/creational/SolicitudFactory.js';
 import { guardarArchivo } from '../config/almacenamiento.js';
+import { conTransaccion } from '../config/transaccion.js';
+import { auditar, OPERACIONES } from './auditoria.service.js';
 
 const ROL_AUTORIZADOR = 'autorizador';
 const PENDIENTE_DE_AUTORIZACION = 'Pendiente de Autorización';
@@ -211,12 +213,21 @@ export async function subirDocumento(
     contenido: archivo.contenido,
   });
 
-  return documentoRepository.crear({
-    solicitudId,
-    estudianteId: solicitud.estudiante_id,
-    tipo,
-    nombreArchivo: archivo.nombreOriginal,
-    rutaArchivo,
+  // R3: el documento y su registro de auditoría van juntos.
+  return conTransaccion(async () => {
+    const documento = await documentoRepository.crear({
+      solicitudId,
+      estudianteId: solicitud.estudiante_id,
+      tipo,
+      nombreArchivo: archivo.nombreOriginal,
+      rutaArchivo,
+    });
+    await auditar(OPERACIONES.SUBIDA_DOCUMENTO, {
+      usuario,
+      solicitudId: solicitud.id,
+      detalle: { tipo, nombreArchivo: archivo.nombreOriginal },
+    });
+    return documento;
   });
 }
 

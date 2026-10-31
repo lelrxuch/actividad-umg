@@ -61,6 +61,12 @@ vi.mock('../repositories/aprobacion.repository.js', () => ({
   listarDeSolicitud: vi.fn(async () => []),
 }));
 
+// R3: cada operación se audita. Esta suite no ejecuta SQL.
+vi.mock('../repositories/auditoria.repository.js', () => ({
+  registrar: vi.fn(async () => ({ id: 1 })),
+  listar: vi.fn(async () => []),
+}));
+
 const DUENO = { id: 3, rol: 'estudiante' };
 const OTRO = { id: 9, rol: 'estudiante' };
 /** CUI que el simulador de RENAP conoce: ANA MARIA LOPEZ GARCIA. */

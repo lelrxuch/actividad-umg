@@ -233,7 +233,7 @@ Para reproducir una falla en local se corren los mismos comandos de la tabla.
 
 ## 6. La API
 
-33 endpoints. Los marcados **público** no requieren token; los demás esperan la
+34 endpoints. Los marcados **público** no requieren token; los demás esperan la
 cabecera `Authorization: Bearer <token>`.
 
 ### Autenticación
@@ -344,6 +344,20 @@ Agregar un canal (correo, SMS) es crear otro `NotificacionRegistradaListener`
 con su función `entregar`: la fila se registra antes de entregar, y queda
 marcada como enviada o con el error.
 
+### Auditoría
+
+| Método | Ruta | Acceso |
+|---|---|---|
+| GET | `/api/auditoria` | administrador — los registros, del más reciente al más viejo. Filtros opcionales: `?solicitudId=` y `?limite=` (1 a 500, 200 por defecto) |
+
+Se audita, con usuario, operación, solicitud y fecha: cada cambio de estado
+(anterior y nuevo), cada aprobación (etapa y resultado), el cambio de monto
+(anterior y nuevo), la asignación de un evaluador, la subida de un documento y
+la validación de identidad al enviar. Cada registro se escribe **en la misma
+transacción** que la operación: si no se puede auditar, la operación se
+deshace. `auditoria.service.js` guarda solo los campos de una lista blanca por
+operación (nunca contraseñas ni tokens) y enmascara el CUI.
+
 ### Códigos de respuesta
 
 El sistema usa los mismos significados en todos los módulos:
@@ -402,6 +416,14 @@ Quién aprobó o rechazó, en qué etapa (`evaluacion` o `autorizacion`) y cuán
 `UNIQUE (solicitud_id, etapa)`: una sola decisión por etapa. La regla de que
 la misma persona no dé las dos se valida en `solicitud.autorizacion.js` con
 esta tabla.
+
+### auditoria
+Quién (`usuario_id`), qué (`operacion`), sobre qué solicitud, cuándo
+(`creado_en`) y qué cambió (`detalle`, JSONB: `{campo, antes, despues}` u otros
+campos según la operación). **Inmutable:** los triggers `auditoria_sin_cambios`
+y `auditoria_sin_truncate` rechazan UPDATE, DELETE y TRUNCATE, aunque los pida
+la propia aplicación. Sin `ON DELETE CASCADE` hacia `solicitudes`: una solicitud
+con auditoría no se puede borrar. El repositorio solo tiene INSERT y SELECT.
 
 ### notificaciones
 Un aviso por cambio de estado y por canal: la solicitud, el destinatario (el

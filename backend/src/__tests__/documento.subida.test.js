@@ -20,6 +20,18 @@ vi.mock('../repositories/solicitud.repository.js', () => ({
   findById: vi.fn(),
 }));
 
+// La operación y su auditoría van en una transacción; aquí solo corre el trabajo.
+vi.mock('../config/transaccion.js', () => ({
+  conTransaccion: async (trabajo) => trabajo(),
+  db: () => ({}),
+}));
+
+// R3: cada operación se audita. Esta suite no ejecuta SQL.
+vi.mock('../repositories/auditoria.repository.js', () => ({
+  registrar: vi.fn(async () => ({ id: 1 })),
+  listar: vi.fn(async () => []),
+}));
+
 /** Solicitud en Borrador, de la estudiante 10, sin modalidad registrada. */
 const BORRADOR = { id: 3, estudiante_id: 10, estado: 'Borrador', tipo: null };
 
