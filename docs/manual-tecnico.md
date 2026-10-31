@@ -60,14 +60,14 @@ docker exec -i becas-pg psql -U postgres -d becas_db < backend/db/schema.sql
 Si el puerto 5432 ya está ocupado por una instalación local, usar `-p 5433:5432`
 y poner `DB_PORT=5433` en el `.env`.
 
-Verificar que las cinco tablas existen:
+Verificar que las ocho tablas existen:
 
 ```bash
 psql -d becas_db -c "\dt"
 ```
 
-Deben aparecer: `usuarios`, `convocatorias`, `solicitudes`, `documentos` y
-`solicitud_evaluadores`.
+Deben aparecer: `usuarios`, `convocatorias`, `solicitudes`, `documentos`,
+`solicitud_evaluadores`, `notificaciones`, `aprobaciones` y `auditoria`.
 
 ### 2.3 Backend
 
@@ -188,8 +188,8 @@ Lo que cambia respecto a desarrollo:
 ## 5. Pruebas
 
 ```bash
-cd backend  && npm test        # 408 pruebas en 23 archivos
-cd frontend && npx vitest run  #  85 pruebas en  7 archivos
+cd backend  && npm test        # 522 pruebas en 28 archivos
+cd frontend && npx vitest run  # 138 pruebas en 12 archivos
 ```
 
 En el frontend hay que usar `npx vitest run` y no `npm test`: el script `test`
@@ -548,44 +548,3 @@ Son cuentas de demostración y no deben usarse fuera de un entorno de pruebas.
 ---
 
 *Última actualización: 22 de octubre de 2026*
-
-## Datos de demostración
-
-El script `scripts/sembrar-demo.sh` deja la base lista para la defensa.
-
-### Qué crea
-
-- Una convocatoria **"Beca Demo Defensa"**: publicada, abierta desde ayer, con cierre a 90 días y las tres modalidades (`nivel-medio`, `universitaria`, `posgrado`).
-- Una cuenta de **estudiante**, "Ana María López García", cuyo nombre coincide con el CUI de prueba `1234567890101`. El CUI se ingresa al enviar la solicitud, no al registrarse.
-- Una cuenta de **evaluador** y una de **administrador**, con el rol puesto por SQL.
-
-Las cuentas se crean mediante `POST /api/auth/register`, para que la contraseña quede cifrada por el backend.
-
-### Cómo correrlo
-
-Requisitos: backend levantado, `schema.sql` aplicado y `psql` disponible en el PATH.
-
-```bash
-export API_URL=http://localhost:4000
-export DB_NAME=becas_db DB_USER=postgres DB_PASSWORD=<clave de PostgreSQL>
-bash scripts/sembrar-demo.sh
-```
-
-Si el backend corre en el puerto `4000`, no hace falta definir `API_URL`: es el valor por defecto. Variables opcionales: `API_URL`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_NAME`, `DB_PASSWORD`, `PASS_DEMO`, `CONV_DIAS_CIERRE`.
-
-En Windows se corre desde Git Bash.
-
-### Se puede repetir
-
-El script se puede correr todas las veces que haga falta sin duplicar nada. Si una cuenta ya existe se omite, y si la convocatoria ya existe se reabre y se alarga su cierre. Conviene correrlo de nuevo unos días antes de la defensa.
-
-### Cuentas de demostración
-
-| Rol | Correo | Contraseña |
-|---|---|---|
-| Estudiante | `ana.lopez@miumg.edu.gt` | `Demo12345!` |
-| Evaluador | `evaluador.demo@miumg.edu.gt` | `Demo12345!` |
-| Administrador | `admin.demo@miumg.edu.gt` | `Demo12345!` |
-| Autoridad autorizadora | `autoridad.demo@miumg.edu.gt` | `Demo12345!` |
-
-Son cuentas de demostración y no deben usarse fuera de un entorno de pruebas.

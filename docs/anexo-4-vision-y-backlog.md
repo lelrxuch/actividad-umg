@@ -118,6 +118,7 @@ está verificado contra `develop` al 22/10/2026.
 | **EPIC-05** | Evaluaciones | ⚪ Pendiente |
 | **EPIC-06** | Aprobación y Rechazo | 🟡 El ciclo de estados existe; faltan cupo, motivo y ranqueo |
 | **EPIC-07** | Reportes | ⚪ Pendiente |
+| **R1–R3** | Requerimientos nuevos del PO (30/10/2026): doble aprobación, notificaciones, auditoría | 🟢 Terminados |
 
 ### 4.1 EPIC-00 — Gestión de Cuentas de Usuario
 
@@ -345,7 +346,7 @@ Criterios de aceptación acordados:
 
 **SCRUM-52 — Ranquear solicitudes por puntaje** · ⚪ · Prioridad **Alta**
 **SCRUM-53 — Aprobar o rechazar solicitud** · 🟡 · Prioridad **Crítica**
-**SCRUM-54 — Notificar al estudiante** · 🟡 · Prioridad **Media**
+**SCRUM-54 — Notificar al estudiante** · 🟢 · Prioridad **Media** · canal en la aplicación (R2)
 **SCRUM-55 — Resolución visible al estudiante** · ⚪ · Prioridad **Alta**
 
 Criterios de aceptación:
@@ -370,7 +371,55 @@ Criterios de aceptación:
 Depende de que EPIC-04 a EPIC-06 existan con datos reales dentro. Es el último de
 la cadena.
 
-### 4.9 Nota sobre las estimaciones
+### 4.9 Requerimientos nuevos del Product Owner · 🟢
+
+Llegaron el 30/10/2026. Su impacto en requisitos, arquitectura, diseño, datos y
+pruebas está en `docs/analisis-impacto-nuevos-requerimientos.md`.
+
+**R1 — Doble aprobación de solicitudes de más de Q10,000** · 🟢 · PR #56
+
+> Como autoridad, quiero que una beca de monto alto pase por dos aprobaciones,
+> para que una sola persona no decida sobre montos grandes.
+
+Criterios de aceptación:
+- Más de Q10,000 requiere la aprobación del evaluador y la de la autoridad
+  autorizadora; Q10,000 o menos sigue el flujo vigente *(estado `Pendiente de
+  Autorización`)*
+- No se marca como autorizada mientras falte alguna aprobación *(409)*
+- Se registra quién aprobó, cuándo y con qué resultado *(tabla `aprobaciones`)*
+- Un rechazo en cualquier etapa la deja Rechazada
+- La misma persona no puede dar las dos aprobaciones *(403)*
+- El estudiante indica el monto antes de enviar; después no se cambia
+
+**R2 — Notificación en cada cambio de estado** · 🟢 · PR #54
+
+> Como estudiante, quiero enterarme de cada cambio en mi solicitud sin tener
+> que entrar a revisarla.
+
+Criterios de aceptación:
+- Cada cambio de estado genera un aviso para el estudiante dueño, no para quien
+  lo provocó
+- Se guarda primero el estado y después se avisa: una falla del canal no
+  deshace la transición
+- Un canal nuevo se agrega como observador, sin tocar la lógica de solicitudes
+- Cada usuario ve solo sus avisos *(un aviso ajeno responde 404)*
+
+**R3 — Auditoría de operaciones relevantes** · 🟢 · PR #57
+
+> Como administrador, quiero saber quién hizo qué sobre cada solicitud y qué
+> cambió, sin que ese registro se pueda alterar.
+
+Criterios de aceptación:
+- Se registra usuario, fecha, operación y solicitud de cada cambio de estado,
+  aprobación, cambio de monto, asignación de evaluador, subida de documento y
+  validación de identidad
+- Se identifica qué dato cambió, con su valor anterior y el nuevo
+- El registro no se modifica ni se borra *(la base rechaza UPDATE, DELETE y
+  TRUNCATE)*
+- Solo el administrador lo consulta
+- No guarda contraseñas ni tokens; el CUI va enmascarado
+
+### 4.10 Nota sobre las estimaciones
 
 Las estimaciones en Story Points se asignan en la Sprint Planning y no se
 registran en este documento, para que no queden dos fuentes de verdad: **el
@@ -390,13 +439,15 @@ que nadie midió haría inservible esta tabla.
 | # | Requisito | Estado | Evidencia |
 |---|---|---|---|
 | S-1 | Las contraseñas se almacenan con hash, nunca en texto plano | **Verificado** | Hash bcrypt en `password_hash`; 26 pruebas sobre el módulo de autenticación |
-| S-2 | El sistema es inmune a inyección SQL | **Verificado** | Las 21 consultas del proyecto usan parámetros `$1`. La única interpolación en una plantilla SQL es una constante de nombres de columna definida en el módulo, nunca datos del usuario |
+| S-2 | El sistema es inmune a inyección SQL | **Verificado** | Las 38 consultas de los repositorios usan parámetros `$1`. La única interpolación en una plantilla SQL es una constante de nombres de columna definida en el módulo, nunca datos del usuario |
 | S-3 | Un usuario no puede leer ni modificar datos de otro | **Verificado** | 17 pruebas de autorización; reproducido de extremo a extremo contra PostgreSQL real: dueño 200, tercero 403 |
 | S-4 | Un error inesperado no revela estructura interna | **Verificado** | 8 pruebas confirman que un error sin `status` responde con mensaje genérico y no filtra nombres de tabla ni de restricción |
 | S-5 | El token de recuperación de contraseña no es reutilizable y vence | **Verificado** | 13 pruebas; en base de datos se guarda su hash |
 | S-6 | Un archivo subido no puede escribir fuera de su directorio ni quedar ejecutable | **Verificado** | Nombre generado por el servidor y lista blanca de extensiones; probado con `../../index.js` y `dpi.pdf.sh` |
 | S-7 | La sesión de un usuario comprometido se puede cerrar de inmediato | **No se cumple** | JWT sin revocación: un token vale hasta que vence. Declarado como trade-off en el ANEXO 5 |
-| S-8 | Las dependencias no tienen vulnerabilidades conocidas | **No se cumple** | `npm audit`: 4 vulnerabilidades en el backend, 1 crítica. Pendiente |
+| S-8 | Las dependencias no tienen vulnerabilidades conocidas | **Verificado** | `npm audit`: 0 en backend y frontend desde el 29/10/2026 |
+| S-9 | El registro de auditoría no se puede alterar | **Verificado** | Triggers en PostgreSQL; `demo-api.sh` comprueba que UPDATE, DELETE y TRUNCATE se rechazan |
+| S-10 | La auditoría no guarda secretos | **Verificado** | Lista blanca de campos por operación y CUI enmascarado; pruebas en `auditoria.test.js` y contra la base |
 
 ### 5.2 Rendimiento
 
@@ -430,10 +481,11 @@ que nadie midió haría inservible esta tabla.
 | # | Requisito | Estado |
 |---|---|---|
 | M-1 | Una regla de negocio se puede probar sin levantar servidor ni base de datos | **Verificado**: 126 pruebas no usan ningún mock porque el dominio no tiene dependencias externas |
-| M-5 | El código del cliente está cubierto por pruebas | **No se cumple**: los 2 archivos de prueba del frontend no importan código de producción y no pueden fallar. Cobertura real: cero |
+| M-5 | El código del cliente está cubierto por pruebas | **Verificado**: 138 pruebas en 12 archivos contra código de producción. Hasta el 22/10/2026 no se cumplía: los 2 archivos de entonces no importaban código real |
 | M-2 | Cambiar el proveedor de validación de identidad no obliga a tocar la lógica de negocio | **Verificado por necesidad**: el proyecto avanza sin credenciales de RENAP |
-| M-3 | Toda transición de estado queda asociada a un actor con derecho a pedirla | **Verificado**: sin actor identificable no se autoriza nada (falla cerrado) |
-| M-4 | Un error de consulta SQL se detecta automáticamente | **No se cumple**: ninguna prueba automatizada ejecuta SQL. Es la deuda técnica más seria del proyecto |
+| M-3 | Toda transición de estado queda asociada a un actor con derecho a pedirla | **Verificado**: sin actor identificable no se autoriza nada (falla cerrado), y desde R3 cada transición queda en la auditoría con su autor |
+| M-4 | Un error de consulta SQL se detecta automáticamente | **Verificado**: el CI corre `demo-api.sh` (91 verificaciones) contra PostgreSQL 16 en cada PR |
+| M-6 | Una operación auditada no queda sin su registro | **Verificado**: se escriben en la misma transacción; sin la tabla de auditoría, la operación se deshace (probado contra PostgreSQL) |
 
 ### 5.6 Disponibilidad
 

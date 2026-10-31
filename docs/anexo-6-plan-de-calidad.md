@@ -140,7 +140,7 @@ dos patrones, probablemente por considerarlo ruido.
 | ESLint | Backend | **No existe.** Carencia declarada |
 
 La inconsistencia es real y está reconocida: el backend, que es donde vive toda
-la lógica de negocio y las 353 pruebas, **no tiene análisis estático**. Es una
+la lógica de negocio y las 522 pruebas, **no tiene análisis estático**. Es una
 de las mejoras pendientes de la sección 9.
 
 ### 4.4 Definición de "Hecho" (DoD)
@@ -151,10 +151,10 @@ completa si no lo cumple entero.
 | | Punto del DoD | ¿Se cumple? |
 |---|---|---|
 | 1 | El código está en la rama `develop` del repositorio | **Sí.** Todo entra por Pull Request |
-| 2 | Se crearon y pasan todas las pruebas unitarias correspondientes | **Sí.** 353 pruebas en el backend y 85 en el frontend, todas contra código de producción y verificadas con mutantes. Hasta el 22/10 el frontend no lo cumplía: ver abajo |
+| 2 | Se crearon y pasan todas las pruebas unitarias correspondientes | **Sí.** 522 pruebas en el backend y 138 en el frontend, todas contra código de producción y verificadas con mutantes. Hasta el 22/10 el frontend no lo cumplía: ver abajo |
 | 3 | El código fue revisado y aprobado por al menos otro miembro | **Sí.** Ningún PR se mergea sin aprobación |
 | 4 | La funcionalidad cumple todos los Criterios de Aceptación | **Sí**, verificado en la Sprint Review |
-| 5 | No se introdujeron nuevos defectos | **Parcial.** La suite de regresión lo cubre, pero nada lo verifica mecánicamente: no hay CI |
+| 5 | No se introdujeron nuevos defectos | **Sí** desde el PR #50: el CI corre la suite y `demo-api.sh` contra PostgreSQL en cada PR, y es check obligatorio para fusionar |
 | 6 | La documentación técnica fue creada o actualizada | **Parcial.** Ver el defecto de `ESTADO.md` más abajo |
 | 7 | La funcionalidad fue desplegada en el entorno de pruebas/staging y verificada por el Product Owner | **No se puede cumplir.** Ver abajo |
 
@@ -202,14 +202,14 @@ contaron 19 pruebas como evidencia de calidad sin comprobar que verificaran
 algo. Durante ese tiempo, la cobertura real del frontend fue cero.
 
 **Cómo se resolvió.** Los dos archivos se borraron (PR #34) y se reemplazaron por
-pruebas que importan el código real: hoy son 85 en 7 archivos, entre servicios,
+pruebas que importan el código real: hoy son 138 en 12 archivos, entre servicios,
 utilidades y pantallas. Cada entrega se verificó con mutantes: 22 de 22
 atrapados en el frontend del flujo del estudiante (PR #34 y #35). El detalle
 está en el ANEXO 7 §6.3.
 
 #### Dos incumplimientos más, declarados
 
-**`main` está 69 commits detrás de `develop`.** La sección 7 de este plan dice
+**`main` está 116 commits detrás de `develop`** (30/10/2026). La sección 7 de este plan dice
 que `main` representa siempre una versión estable y potencialmente desplegable.
 Hoy `main` no representa nada: es una foto vieja del proyecto. O se promueve
 `develop` a `main` al cerrar cada Sprint, o la regla está escrita de más.
@@ -312,20 +312,27 @@ correr la suite en Windows y en Linux antes de cerrar una Historia.
 | Pruebas manuales de API | Colección de Postman | En uso |
 | Recorrido de extremo a extremo | `scripts/demo-api.sh` | En uso, con código de salida |
 | Análisis estático | ESLint | **Solo frontend** |
-| Integración Continua | — | **No existe** |
+| Integración Continua | GitHub Actions (`.github/workflows/ci.yml`) | **En uso** desde el PR #50: jobs `backend` y `frontend`, obligatorios por ruleset |
 | Medición de cobertura | — | **No existe** |
 
-### 6.1 Por qué la ausencia de CI es el problema más importante de este plan
+### 6.1 La Integración Continua, de carencia a check obligatorio
 
-Todo lo que este documento describe —la suite, la verificación por mutación, el
-recorrido de extremo a extremo— **depende de que una persona se acuerde de
-ejecutarlo.** No hay nada que impida mecánicamente que un Pull Request con
-pruebas rojas llegue a `develop`.
+Hasta el PR #50, todo lo que este documento describe —la suite, la verificación
+por mutación, el recorrido de extremo a extremo— **dependía de que una persona
+se acordara de ejecutarlo.** Nada impedía que un Pull Request con pruebas rojas
+llegara a `develop`.
 
-El costo de arreglarlo es un archivo de configuración que ejecute `npm test` en
-cada push. El beneficio es que el punto 5 del DoD pasa de *parcial* a *sí*. Es la
-mejora de mejor relación costo/beneficio que tiene el proyecto, y está
-registrada como prioritaria.
+Hoy, en cada PR hacia `develop` o `main`:
+
+- el job `backend` levanta PostgreSQL 16, aplica `schema.sql`, corre `npm test`,
+  arranca el backend y corre `scripts/demo-api.sh` (91 verificaciones contra la
+  base real);
+- el job `frontend` corre Vitest, ESLint y el build.
+
+El ruleset de `main` y `develop` exige los dos checks en verde y una aprobación
+para fusionar. El punto 5 del DoD pasó de *parcial* a *sí*. Lo que sigue
+dependiendo de personas es la verificación por mutación, que no está
+automatizada.
 
 ---
 
@@ -483,11 +490,11 @@ Todos, sin excepción:
 
 | # | Mejora | Por qué | Costo |
 |---:|---|---|---|
-| 1 | **Integración Continua** que ejecute `npm test` en cada push | Hoy todo el proceso depende de la memoria de las personas. Pasaría el punto 5 del DoD de *parcial* a *sí* | Un archivo de configuración |
+| ~~1~~ | ~~**Integración Continua**~~ | **Hecho** en el PR #50, y además corre `demo-api.sh` contra PostgreSQL | Hecho |
 | 2 | **Resolver el punto 7 del DoD** | Un punto que nadie cumple vuelve decorativo al DoD entero | Una decisión del PO |
-| 3 | **Promover `develop` a `main`** al cerrar cada Sprint | `main` lleva 69 commits de atraso y no representa nada | Un merge por Sprint |
+| 3 | **Promover `develop` a `main`** al cerrar cada Sprint | `main` lleva 116 commits de atraso (30/10/2026) y no representa nada | Un merge por Sprint |
 | ~~4~~ | ~~**Corregir `ESTADO.md`**~~ | Declaraba los seis patrones como faltantes, con rutas que no existen. **Corregido junto con este plan**, y verificado archivo por archivo contra el repositorio | Hecho |
-| 5 | **Atender `npm audit`** | 5 vulnerabilidades en el backend: 1 crítica, 2 altas y 2 moderadas | Pendiente de evaluar el impacto |
+| ~~5~~ | ~~**Atender `npm audit`**~~ | **Hecho** en `fix/npm-audit` (29/10/2026): 0 vulnerabilidades en backend y frontend, sin `--force` | Hecho |
 | 6 | **ESLint en el backend** | Es donde vive toda la lógica y no tiene análisis estático | Un archivo de configuración |
 | 7 | **Medición de cobertura** | La verificación por mutación demuestra que lo probado sirve, pero no dice qué quedó sin probar | Configuración de Vitest |
 | 8 | **Pruebas automatizadas contra PostgreSQL real** | Hoy ninguna prueba ejecuta SQL: el repositorio siempre está mockeado | Alto. Requiere base de datos en el entorno de pruebas |
@@ -495,7 +502,7 @@ Todos, sin excepción:
 ### 10.1 Mejora que se adelantó a la lista: pruebas reales en el frontend
 
 Entró por encima de las ocho anteriores porque el frontend no estaba
-verificado en absoluto y eso no se sabía. **Resuelta:** hoy tiene 85 pruebas
+verificado en absoluto y eso no se sabía. **Resuelta:** hoy tiene 138 pruebas
 contra código de producción. Ver §4.5.
 
 ---

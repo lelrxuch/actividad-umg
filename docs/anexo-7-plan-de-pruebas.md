@@ -68,7 +68,7 @@ Se declara explícitamente, para que no se asuma cobertura que no existe:
 - **Pruebas de carga y estrés.** El sistema no se ha probado con usuarios
   concurrentes. El curso no lo pide y el equipo no tiene entorno para medirlo.
 - **Pruebas de extremo a extremo automatizadas en el navegador.** No hay
-  Cypress ni Playwright en el repositorio. El frontend se prueba con 85 pruebas
+  Cypress ni Playwright en el repositorio. El frontend se prueba con 138 pruebas
   de componentes y servicios (ver 6.2), que reemplazan al backend por dobles. El
   flujo del estudiante se recorrió en un navegador real contra PostgreSQL al
   revisar los PR #35 y #36, pero ese recorrido no está automatizado.
@@ -145,20 +145,20 @@ integración, pocas de sistema. El estado actual respeta esa forma.
 
 ```
                    ┌──────────────────┐
-                   │  Nivel 3         │  solo manual: demo-api.sh y Postman
-                   │  Sistema y       │  contra PostgreSQL real (15 pasos),
+                   │  Nivel 3         │  demo-api.sh contra PostgreSQL real
+                   │  Sistema y       │  (20 pasos, 91 verificaciones, en el CI),
                    │  Aceptación      │  y la Sprint Review con el PO
                  ┌─┴──────────────────┴─┐
-                 │  Nivel 2             │  285 pruebas
-                 │  Integración         │  backend: 192 entre capas + 30 de controller
-                 │                      │  frontend: 28 de servicios + 35 de pantallas
+                 │  Nivel 2             │  503 pruebas
+                 │  Integración         │  backend: 357 entre capas + 30 de controller
+                 │                      │  frontend: 33 de servicios + 83 de pantallas
              ┌───┴──────────────────────┴───┐
-             │  Nivel 1                     │  153 pruebas unitarias
-             │  Unitarias                   │  backend 131 + frontend 22
+             │  Nivel 1                     │  157 pruebas unitarias
+             │  Unitarias                   │  backend 135 + frontend 22
              └──────────────────────────────┘
 
-      Backend:  131 + 192 + 30 = 353, en 20 archivos.
-      Frontend:  22 +  28 + 35 =  85, en 7 archivos.
+      Backend:  135 + 357 + 30 = 522, en 28 archivos.
+      Frontend:  22 +  33 + 83 = 138, en 12 archivos.
 ```
 
 La clasificación no es declarativa: sale de qué mockea cada archivo. Una prueba
@@ -171,7 +171,8 @@ En el frontend se aplica el mismo criterio. Son unitarias las que no mockean nad
 (`fechas.test.js`, `api.test.js`); de servicios, las que mockean solo el cliente
 HTTP, de modo que el servicio real arma la petición e interpreta la respuesta; y
 de pantallas, las que renderizan el componente real y mockean solo el servicio
-que consume.
+que consume. `notificaciones.test.jsx` y `auditoria.test.jsx` prueban las dos
+cosas y se cuentan como de pantallas.
 
 ### 6.1 Niveles de prueba
 
@@ -194,7 +195,7 @@ que consume.
   componentes.
 - **Qué:** dos cosas distintas. La primera, la colaboración entre un servicio
   y los patrones que usa: se mockea **solo el repositorio**, así que el servicio
-  y los patrones se ejecutan de verdad (192 pruebas). La segunda, la capa de
+  y los patrones se ejecutan de verdad (357 pruebas). La segunda, la capa de
   controller: que un error de dominio llegue con su código HTTP, que el
   identificador del token se traduzca al del dominio, y que el catálogo de
   modalidades que viaja al frontend sea el mismo que declaran las clases de
@@ -202,12 +203,11 @@ que consume.
 - **Herramienta:** Vitest. Los controllers se invocan directamente con un doble
   de `res` que registra lo que respondieron; **no se levanta el servidor HTTP**
   en la suite automatizada. Eso se hace en el Nivel 3.
-- **Limitación declarada:** ninguna prueba automatizada toca PostgreSQL. El
-  repositorio siempre está mockeado, de modo que la suite verifica la lógica
-  pero **no verifica el SQL**. Un error en una consulta, en un nombre de
-  columna o en una restricción CHECK no lo atrapa `npm test`: lo atrapa el
-  Nivel 3. Es la carencia más importante de la suite y está en la tabla de
-  riesgos de la sección 9.
+- **Limitación declarada:** las pruebas de Vitest no tocan PostgreSQL. El
+  repositorio siempre está mockeado, de modo que `npm test` verifica la lógica
+  pero **no el SQL**. Un error en una consulta, en un nombre de columna o en
+  una restricción CHECK lo atrapa el Nivel 3, que desde el PR #50 corre en el
+  CI contra un PostgreSQL 16 real en cada PR.
 
 #### Nivel 3 — Pruebas de sistema y aceptación
 
@@ -218,19 +218,22 @@ que consume.
   **PostgreSQL real**. Es el único nivel donde se ejecuta SQL de verdad, y por
   eso es el único que puede atrapar un error de esquema o de consulta.
 - **Herramientas:** el script `scripts/demo-api.sh`, un recorrido narrado de
-  **15 pasos** que registra usuarios, crea una solicitud, sube un documento
-  real, valida la identidad contra RENAP al enviar (sin CUI, con un CUI
-  inexistente, con el de otra persona y con el propio), recorre el ciclo de vida
-  completo hasta Aprobada, e intenta cada operación no autorizada verificando el
-  código que devuelve; y la colección de Postman para exploración dirigida.
+  **20 pasos y 91 verificaciones** que registra usuarios, crea una solicitud,
+  sube un documento real, fija el monto, valida la identidad contra RENAP al
+  enviar (sin CUI, con un CUI inexistente, con el de otra persona y con el
+  propio), recorre el ciclo de vida completo hasta Aprobada, comprueba las
+  notificaciones al estudiante, la doble aprobación de una solicitud de más de
+  Q10,000 y la auditoría (incluido que la base rechace modificarla o borrarla),
+  e intenta cada operación no autorizada verificando el código que devuelve; y
+  la colección de Postman para exploración dirigida.
 - **Es idempotente y se autoverifica.** Cada ejecución crea sus propios usuarios
   con un sufijo único, así que se puede repetir sin limpiar la base. Cada paso
   compara el código HTTP obtenido contra el esperado, imprime ✓ o ✗, y el script
-  **termina con código de salida distinto de cero si algo falló**. Eso lo hace
-  apto para un CI el día que exista: no hay que leer la salida para saber si
-  pasó.
-- **Limitación declarada:** hoy se corre a mano. Su ejecución depende de que
-  alguien se acuerde antes de la Sprint Review.
+  **termina con código de salida distinto de cero si algo falló**. Por eso el
+  CI lo usa tal cual: no hay que leer la salida para saber si pasó.
+- **Se corre en cada PR.** El job `backend` de GitHub Actions levanta
+  PostgreSQL 16, aplica `schema.sql`, arranca el backend y corre el recorrido.
+  Es un check obligatorio: un PR que lo rompe no se puede fusionar.
 
 #### Hallazgo del Nivel 3: el orden de las revisiones
 
@@ -249,42 +252,55 @@ error en el futuro.
 
 ### 6.2 Inventario de la suite automatizada
 
-**Backend — 353 pruebas en 20 archivos:**
+**Backend — 522 pruebas en 28 archivos:**
 
 | Archivo | Pruebas | Qué cubre |
 |---|---:|---|
-| `solicitud.flujo-estudiante.test.js` | 32 | Expediente completo para enviar, una solicitud por convocatoria, identidad contra RENAP |
+| `doble-aprobacion.test.js` | 44 | Doble aprobación de más de Q10,000: umbral, etapas, misma persona, monto, bandeja y expediente de la autoridad |
+| `solicitud.flujo-estudiante.test.js` | 35 | Expediente completo para enviar, una solicitud por convocatoria, identidad contra RENAP |
+| `auditoria.test.js` | 32 | Qué se audita, en la misma transacción, lista blanca, CUI enmascarado, solo administrador consulta |
 | `convocatoria.service.test.js` | 30 | Reglas de negocio de convocatorias |
-| `auth.service.test.js` | 26 | Registro, login, dominios institucionales |
+| `solicitud.evaluadores.test.js` | 30 | Asignación de evaluadores |
 | `patterns/state.test.js` | 27 | Ciclo de vida de la solicitud |
 | `documento.subida.test.js` | 27 | Lista blanca, tamaño, nombre en disco |
+| `auth.service.test.js` | 26 | Registro, login, dominios institucionales |
 | `patterns/structural.test.js` | 26 | Adapter y Proxy |
 | `convocatoria.state.test.js` | 26 | Ciclo de vida de la convocatoria y si recibe solicitudes |
-| `patterns/creational.test.js` | 17 | Factory Method y Builder |
-| `patterns/observer.test.js` | 17 | Notificación al estudiante |
-| `solicitud.autorizacion.test.js` | 17 | Quién puede hacer qué |
+| `notificaciones.test.js` | 24 | Aviso al dueño en cada cambio de estado, orden guardar-avisar, fallas del canal, consulta propia |
 | `password.validator.test.js` | 18 | Política de contraseñas |
-| `expediente.documento.http.test.js` | 15 | Rutas de expedientes y documentos |
+| `patterns/creational.test.js` | 17 | Factory Method y Builder |
+| `patterns/observer.test.js` | 17 | Observer |
+| `solicitud.autorizacion.test.js` | 17 | Quién puede hacer qué |
 | `structural.services.test.js` | 17 | Integración de Adapter y Proxy, comparación de nombres con RENAP |
+| `expediente.documento.http.test.js` | 15 | Rutas de expedientes y documentos |
+| `solicitud.asignadas.test.js` | 12 | Bandeja de revisión por rol |
 | `solicitud.service.test.js` | 12 | Integración de State y Observer |
 | `creational.services.test.js` | 10 | Integración de Factory y Builder |
+| `password.controller.forgot.test.js` | 10 | Recuperación sin exponer el token |
+| `usuario.evaluadores.test.js` | 10 | Lista de evaluadores |
 | `password.service.reset.test.js` | 8 | Token de recuperación |
 | `solicitud.controller.errores.test.js` | 8 | Que un error no filtre información |
 | `usuario.service.test.js` | 8 | Actualización de perfil |
 | `solicitud.modalidades.http.test.js` | 7 | Modalidades por HTTP |
 | `password.service.test.js` | 5 | Cambio de contraseña |
+| `transaccion.test.js` | 4 | BEGIN/COMMIT, ROLLBACK, conexión por transacción |
 
-**Frontend — 85 pruebas en 7 archivos:**
+**Frontend — 138 pruebas en 12 archivos:**
 
 | Archivo | Pruebas | Qué cubre |
 |---|---:|---|
 | `ConvocatoriasPage.test.jsx` | 20 | Días restantes, mensaje sin convocatorias, iniciar solicitud, redirección si ya existe una |
-| `SolicitudPage.test.jsx` | 15 | Expediente, subida de documentos, CUI, envío, solo lectura fuera de Borrador |
+| `SolicitudPage.test.jsx` | 20 | Expediente, subida, CUI, envío, monto, aprobaciones, solo lectura fuera de Borrador |
+| `solicitudYDocumentoService.test.js` | 17 | Peticiones de solicitudes y documentos, monto y autorización |
 | `fechas.test.js` | 15 | Días restantes sin desfase de zona horaria |
-| `solicitudYDocumentoService.test.js` | 12 | Peticiones de solicitudes y documentos, errores con `faltantes` |
+| `auditoria.test.jsx` | 15 | Servicio y pantalla de auditoría |
+| `notificaciones.test.jsx` | 10 | Servicio y pantalla de notificaciones |
+| `EvaluadorPage.test.jsx` | 9 | Bandeja del evaluador y de la autoridad, acciones por rol |
 | `authService.test.js` | 9 | Registro, login y recuperación; propaga el mensaje del backend |
 | `convocatoriaService.test.js` | 7 | Listado y detalle de convocatorias |
 | `api.test.js` | 7 | Token de sesión en cada petición, aunque `localStorage` falle |
+| `AsignacionEvaluadoresPage.test.jsx` | 5 | Asignación de evaluadores |
+| `DashboardPage.test.jsx` | 4 | Enlaces por rol |
 
 **Antecedente que conviene no olvidar.** Hasta el 22/10/2026 el frontend tenía
 2 archivos con 19 pruebas que **no importaban un solo módulo de producción**: su
@@ -397,9 +413,9 @@ Las pruebas no producen un documento final único, sino artefactos continuos:
 
 | Artefacto | Dónde vive | Estado |
 |---|---|---|
-| Suite de pruebas automatizadas | `backend/src/__tests__/` y `frontend/src/__tests__/` | **353 + 85 pruebas**, todas contra código de producción |
+| Suite de pruebas automatizadas | `backend/src/__tests__/` y `frontend/src/__tests__/` | **522 + 138 pruebas**, todas contra código de producción |
 | Colección de Postman | `backend/tests/postman/` | Existe |
-| Script de recorrido end-to-end | `scripts/demo-api.sh` | 15 pasos, idempotente, con código de salida |
+| Script de recorrido end-to-end | `scripts/demo-api.sh` | 20 pasos y 91 verificaciones, idempotente, corre en el CI |
 | Registro de defectos | Tablero de Jira, proyecto SCRUM, etiqueta Bug | En uso |
 | Retroalimentación de revisiones | Comentarios en los Pull Requests de GitHub | En uso |
 | Reporte de ejecución en CI | — | **No existe.** Ver 5.3 |
@@ -428,12 +444,12 @@ Declarados para que el Product Owner los conozca y pueda priorizarlos:
 
 | Riesgo | Impacto | Qué se hace hoy |
 |---|---|---|
-| No hay CI: un PR con pruebas rojas puede llegar a `develop` | Alto | Ejecución manual por quien desarrolla y por quien revisa |
+| ~~No hay CI~~ **Resuelto:** `backend` y `frontend` son checks obligatorios para fusionar | — | GitHub Actions desde el PR #50 |
 | No hay Staging: las condiciones de producción no se prueban | Medio | Variables documentadas en el Manual Técnico |
-| **Ninguna prueba automatizada ejecuta SQL.** Un error de consulta, de nombre de columna o de restricción solo lo atrapa el recorrido manual | Alto | `demo-api.sh` contra PostgreSQL real antes de cada Sprint Review |
+| Las pruebas de Vitest no ejecutan SQL | Medio (antes Alto) | `demo-api.sh` contra PostgreSQL real en el CI, en cada PR |
 | No se mide cobertura de código | Medio | La verificación por mutación cubre el caso crítico, pero no dice qué quedó sin probar |
 | Las pruebas del frontend reemplazan al backend por dobles: no hay recorrido automatizado en navegador | Medio | Recorrido manual en navegador real al revisar cada PR del flujo |
-| `npm audit` reporta 5 vulnerabilidades en el backend: 1 crítica, 2 altas y 2 moderadas | Alto | **Pendiente de atender** |
+| ~~`npm audit` con vulnerabilidades~~ | — | **Resuelto** el 29/10/2026: 0 en backend y frontend |
 
 ---
 
