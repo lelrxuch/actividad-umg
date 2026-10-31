@@ -233,7 +233,7 @@ Para reproducir una falla en local se corren los mismos comandos de la tabla.
 
 ## 6. La API
 
-29 endpoints. Los marcados **público** no requieren token; los demás esperan la
+31 endpoints. Los marcados **público** no requieren token; los demás esperan la
 cabecera `Authorization: Bearer <token>`.
 
 ### Autenticación
@@ -309,6 +309,31 @@ lo envíe, y en Aprobada o Rechazada ganaría acceso a datos personales sin nada
 que evaluar. La regla vive en los estados (`IEstadoSolicitud#admiteEvaluadores`,
 prohibida por omisión), no en el service.
 
+### Notificaciones
+
+| Método | Ruta | Quién |
+|---|---|---|
+| GET | `/api/notificaciones` | sesión — los avisos del usuario del token, del más reciente al más viejo, con `noLeidas` |
+| PATCH | `/api/notificaciones/:id/leida` | sesión — solo un aviso propio; uno ajeno o inexistente responde 404 |
+
+Cada transición de una solicitud (enviar, evaluar, dictaminar) deja un aviso
+para el **estudiante dueño**, no para quien hizo el cambio. Lo genera el patrón
+Observer: `NotificacionRegistradaListener` se engancha a la solicitud en cada
+transición, con el canal `app`.
+
+El orden importa y está cubierto por pruebas: primero se guarda el estado nuevo
+y **después** se notifica. Si guardar falla, no sale ningún aviso; si el aviso
+falla (por ejemplo, la tabla no existe), la transición responde igual y el
+estado ya quedó guardado. La falla queda en la consola del servidor:
+
+```
+[solicitud 42] el observer NotificacionRegistradaListener falló: …
+```
+
+Agregar un canal (correo, SMS) es crear otro `NotificacionRegistradaListener`
+con su función `entregar`: la fila se registra antes de entregar, y queda
+marcada como enviada o con el error.
+
 ### Códigos de respuesta
 
 El sistema usa los mismos significados en todos los módulos:
@@ -359,6 +384,12 @@ Qué evaluador revisa qué solicitud. Es la tabla que consulta `DocumentoProxy`
 para decidir quién puede ver un expediente. Se llena con
 `POST /api/solicitudes/:id/evaluadores`; la llave primaria
 `(solicitud_id, evaluador_id)` es la que decide el 409 de "ya asignado".
+
+### notificaciones
+Un aviso por cambio de estado y por canal: la solicitud, el destinatario (el
+estudiante dueño), el estado anterior y el nuevo, el canal, el mensaje, si se
+entregó o con qué error falló, y cuándo se leyó. La fila se crea **antes** de
+intentar la entrega, para que un canal caído no pierda el evento.
 
 ### Cadenas que no se pueden tocar
 

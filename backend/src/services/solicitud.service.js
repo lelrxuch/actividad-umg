@@ -14,6 +14,8 @@
 import * as solicitudRepository from '../repositories/solicitud.repository.js';
 import { Solicitud, crearEstadoDesdeNombre } from '../patterns/state/index.js';
 import { EmailNotificationListener } from '../patterns/observer/EmailNotificationListener.js';
+import { NotificacionRegistradaListener } from '../patterns/observer/NotificacionRegistradaListener.js';
+import * as notificacionRepository from '../repositories/notificacion.repository.js';
 import { SolicitudFactory } from '../patterns/creational/SolicitudFactory.js';
 import {
   autorizar,
@@ -135,12 +137,25 @@ async function exigirIdentidad(fila, cui, validador) {
  * @param {{correoEstudiante?: string, transporteCorreo?: Function}} [opciones]
  * @returns {Solicitud}
  */
-function hidratar(fila, { correoEstudiante, transporteCorreo } = {}) {
+function hidratar(fila, { correoEstudiante, transporteCorreo, paraTransicion = false } = {}) {
   const solicitud = new Solicitud({
     id: fila.id,
     estudiante: fila.estudiante_id,
     estado: crearEstadoDesdeNombre(fila.estado),
+    notificacionDiferida: paraTransicion,
   });
+
+  // Toda transición avisa al estudiante dueño, dentro de la aplicación. Cada
+  // canal es un observer más: agregar uno no toca este service.
+  if (paraTransicion) {
+    solicitud.agregarObserver(
+      new NotificacionRegistradaListener({
+        destinatarioId: fila.estudiante_id,
+        canal: 'app',
+        repositorio: notificacionRepository,
+      })
+    );
+  }
 
   if (correoEstudiante) {
     solicitud.agregarObserver(
@@ -177,7 +192,7 @@ async function aplicarTransicion(id, accion, opciones = {}) {
   // sin control de acceso.
   await autorizar(opciones.accionAutorizada, fila, opciones.usuario);
 
-  const solicitud = hidratar(fila, opciones);
+  const solicitud = hidratar(fila, { ...opciones, paraTransicion: true });
 
   // Precondición propia de la acción (hoy: expediente completo e identidad
   // para enviar). Solo corre si el ESTADO admite la acción: reenviar una
@@ -192,13 +207,18 @@ async function aplicarTransicion(id, accion, opciones = {}) {
   // esto lanza y el `actualizarEstado` de abajo nunca se ejecuta.
   accion(solicitud);
 
-  // La transición fue aceptada: los observers ya fueron notificados por
-  // Solicitud#cambiarEstado. Solo queda persistir el estado nuevo.
+  // La transición fue aceptada. Primero se guarda el estado nuevo y SOLO
+  // DESPUÉS se avisa: si la escritura falla, nadie recibe el aviso de un
+  // estado que no existe; si el aviso falla, el estado ya quedó guardado.
   await solicitudRepository.actualizarEstado(
     solicitud.id,
     solicitud.nombreEstado,
     ...(registro ? [registro] : [])
   );
+
+  // Nunca lanza: una falla de cualquier canal se atrapa y se registra
+  // (Solicitud#notificar y NotificacionRegistradaListener).
+  await solicitud.publicarNotificaciones();
 
   return formatoPublico(fila, solicitud);
 }

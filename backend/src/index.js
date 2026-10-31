@@ -9,6 +9,7 @@ import convocatoriaRoutes from './routes/convocatoria.routes.js';
 import solicitudRoutes from './routes/solicitud.routes.js';
 import expedienteRoutes from './routes/expediente.routes.js';
 import documentoRoutes from './routes/documento.routes.js';
+import notificacionRoutes from './routes/notificacion.routes.js';
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use('/api/convocatorias', convocatoriaRoutes);
 app.use('/api/solicitudes', solicitudRoutes);
 app.use('/api/expedientes', expedienteRoutes);
 app.use('/api/documentos', documentoRoutes);
+app.use('/api/notificaciones', notificacionRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en http://localhost:${PORT}`);
