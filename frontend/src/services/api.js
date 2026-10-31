@@ -1,8 +1,11 @@
 // src/services/api.js
 import axios from 'axios';
 
+// La dirección del backend se fija al compilar: en la nube llega por la variable
+// VITE_API_URL (por ejemplo https://becas-api.azurewebsites.net/api); sin ella,
+// el backend local de desarrollo.
 const API = axios.create({
-  baseURL: 'http://localhost:4000/api', 
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api',
 });
 
 /**

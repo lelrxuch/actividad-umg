@@ -76,7 +76,18 @@ describe('agregarTokenDeSesion', () => {
 });
 
 describe('la instancia de axios', () => {
-  it('apunta a la API del backend', () => {
+  it('sin VITE_API_URL apunta al backend local', () => {
     expect(API.defaults.baseURL).toBe('http://localhost:4000/api');
+  });
+
+  it('con VITE_API_URL apunta al backend desplegado', async () => {
+    vi.stubEnv('VITE_API_URL', 'https://becas-api.azurewebsites.net/api');
+    vi.resetModules();
+    try {
+      const { default: desplegada } = await import('../services/api');
+      expect(desplegada.defaults.baseURL).toBe('https://becas-api.azurewebsites.net/api');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
