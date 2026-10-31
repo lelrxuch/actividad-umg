@@ -27,12 +27,17 @@ EVA_EMAIL="evaluador.demo@miumg.edu.gt"
 ADM_NOMBRE="Administrador Demo"
 ADM_EMAIL="admin.demo@miumg.edu.gt"
 
+# Da la segunda aprobación de las solicitudes de más de Q10,000 (requerimiento R1)
+AUT_NOMBRE="Autoridad Demo"
+AUT_EMAIL="autoridad.demo@miumg.edu.gt"
+
 CONV_TITULO="Beca Demo Defensa"
 CONV_DIAS_CIERRE="${CONV_DIAS_CIERRE:-90}"
 
 # Valores de usuarios.rol que usa el backend (no hay CHECK en la base: confirmar en el código)
 ROL_EVALUADOR="${ROL_EVALUADOR:-evaluador}"
 ROL_ADMIN="${ROL_ADMIN:-administrador}"
+ROL_AUTORIZADOR="${ROL_AUTORIZADOR:-autorizador}"
 # -------------------------------------------------------------------------------------
 
 PSQL=(psql -v ON_ERROR_STOP=1 -qtA)
@@ -72,6 +77,7 @@ echo "== Cuentas =="
 asegurar_cuenta "$EST_NOMBRE" "$EST_EMAIL"
 asegurar_cuenta "$EVA_NOMBRE" "$EVA_EMAIL"
 asegurar_cuenta "$ADM_NOMBRE" "$ADM_EMAIL"
+asegurar_cuenta "$AUT_NOMBRE" "$AUT_EMAIL"
 
 echo "== Nombres, roles y convocatoria =="
 "${PSQL[@]}" <<SQL
@@ -79,9 +85,11 @@ echo "== Nombres, roles y convocatoria =="
 UPDATE usuarios SET nombre = '${EST_NOMBRE}' WHERE email = '${EST_EMAIL}';
 UPDATE usuarios SET nombre = '${EVA_NOMBRE}' WHERE email = '${EVA_EMAIL}';
 UPDATE usuarios SET nombre = '${ADM_NOMBRE}' WHERE email = '${ADM_EMAIL}';
+UPDATE usuarios SET nombre = '${AUT_NOMBRE}' WHERE email = '${AUT_EMAIL}';
 
 UPDATE usuarios SET rol = '${ROL_EVALUADOR}' WHERE email = '${EVA_EMAIL}';
 UPDATE usuarios SET rol = '${ROL_ADMIN}'     WHERE email = '${ADM_EMAIL}';
+UPDATE usuarios SET rol = '${ROL_AUTORIZADOR}' WHERE email = '${AUT_EMAIL}';
 
 INSERT INTO convocatorias
     (titulo, descripcion, fecha_apertura, fecha_cierre, modalidades, estado, creada_por)
@@ -110,5 +118,7 @@ echo "=========== DATOS PARA LA DEMOSTRACIÓN ==========="
 printf '%-14s %-34s %s\n' "Estudiante:"    "$EST_EMAIL" "$PASS_DEMO"
 printf '%-14s %-34s %s\n' "Evaluador:"     "$EVA_EMAIL" "$PASS_DEMO"
 printf '%-14s %-34s %s\n' "Administrador:" "$ADM_EMAIL" "$PASS_DEMO"
+printf '%-14s %-34s %s\n' "Autoridad:"     "$AUT_EMAIL" "$PASS_DEMO"
 echo "CUI de prueba (al enviar la solicitud): $EST_CUI"
+echo "Monto: más de Q10,000 para mostrar la doble aprobación; Q10,000 o menos, una sola"
 echo "===================================================="

@@ -541,6 +541,7 @@ Al terminar, el script imprime estas cuentas:
 | Estudiante | `ana.lopez@miumg.edu.gt` | `Demo12345!` |
 | Evaluador | `evaluador.demo@miumg.edu.gt` | `Demo12345!` |
 | Administrador | `admin.demo@miumg.edu.gt` | `Demo12345!` |
+| Autoridad autorizadora | `autoridad.demo@miumg.edu.gt` | `Demo12345!` |
 
 Son cuentas de demostración y no deben usarse fuera de un entorno de pruebas.
 
@@ -585,5 +586,6 @@ El script se puede correr todas las veces que haga falta sin duplicar nada. Si u
 | Estudiante | `ana.lopez@miumg.edu.gt` | `Demo12345!` |
 | Evaluador | `evaluador.demo@miumg.edu.gt` | `Demo12345!` |
 | Administrador | `admin.demo@miumg.edu.gt` | `Demo12345!` |
+| Autoridad autorizadora | `autoridad.demo@miumg.edu.gt` | `Demo12345!` |
 
 Son cuentas de demostración y no deben usarse fuera de un entorno de pruebas.
