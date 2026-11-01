@@ -25,7 +25,7 @@
 | Marco Antonio Rolando Corado García | QA / Tester | mcoradog5@miumg.edu.gt | 4699-3417 |
 | Brayan David Sujuy Hernández | Desarrollador Frontend | bsujuyh@miumg.edu.gt | 3422-2804 |
 | José Daniel Pereira Cabrera | Desarrollador Backend | | |
-| Cristopher Isaí Contreras Salazar | Arquitecto de Infraestructura | | |
+| Cristopher Isaí Contreras Salazar | Arquitecto de Infraestructura | ccontrerass@miumg.edu.gt | 4688-7530 |
 
 Los datos de contacto los llena cada integrante a mano.
 
