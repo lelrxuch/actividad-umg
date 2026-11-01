@@ -6,9 +6,9 @@
 | | |
 |---|---|
 | **Solicitud de cambio** | Comunicación del Ing. Mario Fuentes (Product Owner): aprobación de solicitudes de mayor monto, notificaciones por cambio de estado y auditoría de operaciones relevantes |
-| **Fecha del análisis** | 30/10/2026 |
+| **Fecha del análisis** | 30/10/2026 · versión final 31/10/2026 |
 | **Base analizada** | Rama `develop`, commit `32c90ea`: 29 endpoints, 418 pruebas de backend y 97 de frontend, CI obligatorio |
-| **Estado** | Análisis entregado. Implementación pendiente de las decisiones de la sección 7 |
+| **Estado** | **Implementado.** R2 en el PR #54, R1 en el #56 y R3 en el #57, todos en `main`. El resultado, criterio por criterio, está en la sección 9 |
 
 Cada afirmación sobre el sistema actual de este documento se verificó contra el
 código de `develop`, no contra la documentación.
@@ -348,19 +348,19 @@ comprobaciones de la auditoría contra la base real; el CI las corre en cada PR.
 
 ---
 
-## 7. Decisiones que necesita el Product Owner
+## 7. Decisiones del Product Owner
 
-| # | Pregunta | Propuesta del equipo |
+| # | Pregunta | Decisión tomada |
 |---|---|---|
 | 1 | ¿Quién es la **autoridad autorizadora**? | Un **rol nuevo** (`autorizador`). Si fuera el administrador, la persona que asigna evaluadores también autorizaría: se concentra el control en una sola cuenta |
 | 2 | ¿El **monto** lo pide el estudiante o lo fija la convocatoria? | Lo indica el estudiante, como dice el requerimiento ("monto de beca solicitado"), con un máximo opcional por convocatoria |
 | 3 | ¿Qué **canal** de notificación se exige en esta entrega? | **En la aplicación**. El correo requiere un servidor de correo y un despliegue que el proyecto no tiene (ANEXO 6, punto 7 del DoD) |
-| 4 | ¿Las solicitudes que ya existen tienen monto? | Quedan sin monto y siguen el flujo vigente. Las nuevas lo exigen |
+| 4 | ¿Las solicitudes que ya existen tienen monto? | Quedan sin monto y siguen el flujo vigente. Las nuevas lo indican **antes de enviar** (no al crear), y sin monto no se envían |
 | 5 | ¿Quién más puede **consultar la auditoría**? | Solo el administrador |
 
 ---
 
-## 8. Plan y estimación
+## 8. Plan y estimación (previo a la implementación)
 
 | Bloque | Responsable propuesto | Estimación |
 |---|---|---|
@@ -385,6 +385,76 @@ Request con revisión y CI, como el resto del proyecto.
 | El estado nuevo rompe el ciclo de vida existente | Las 27 pruebas de `patterns/state.test.js` corren sin modificación, más las del estado nuevo |
 | Exigir el monto rompe las solicitudes existentes | Decisión 4: el monto es nulo en las existentes y obligatorio solo al crear |
 | El trigger de inmutabilidad no se prueba con Vitest | Se verifica en `demo-api.sh` contra PostgreSQL, que el CI ejecuta en cada PR |
+
+---
+
+## 9. Resultado de la implementación
+
+Esta sección cierra el análisis: cada punto de la comunicación del Product
+Owner, cómo quedó y dónde se puede verificar. Todo se probó de tres formas:
+pruebas automatizadas (Vitest), el recorrido `scripts/demo-api.sh` contra
+PostgreSQL real, que el CI corre en cada PR, y el flujo completo en el
+navegador.
+
+### 9.1 Trazabilidad: requerimiento → implementación → evidencia
+
+**R1 — Aprobación de solicitudes de mayor monto** (PR #56)
+
+| Lo que pide el PO | Cómo quedó | Evidencia |
+|---|---|---|
+| Más de Q10,000 exige dos aprobaciones: evaluación y autoridad autorizadora | Estado nuevo `Pendiente de Autorización` en el patrón State; rol `autorizador` | `doble-aprobacion.test.js`; `demo-api.sh` paso 15c |
+| Q10,000 o menos sigue el flujo vigente | Umbral estricto `> 10000`: Q10,000 exactos se aprueban con el evaluador | Prueba del caso límite |
+| No se autoriza mientras falte una aprobación | Desde En Evaluación solo se llega a Pendiente; desde Pendiente solo existe `autorizar` | Autorizar antes del dictamen responde 409 |
+| Registrar quién aprobó, fecha y hora, y resultado | Tabla `aprobaciones` (usuario, etapa, resultado, fecha), en la misma transacción que el estado | Detalle de la solicitud: sección *Aprobaciones* |
+| Un rechazo deja la solicitud Rechazada | En cualquiera de las dos etapas; Rechazada es estado final | Pruebas por etapa |
+| Una misma persona no completa ambas aprobaciones | Se compara el autor de la primera aprobación al autorizar, aunque luego tenga el rol | 403 *La misma persona no puede dar las dos aprobaciones.*, también contra PostgreSQL |
+
+**R2 — Notificaciones por cambio de estado** (PR #54)
+
+| Lo que pide el PO | Cómo quedó | Evidencia |
+|---|---|---|
+| Notificación al estudiante dueño en cada cambio de estado | Observer `NotificacionRegistradaListener`, conectado al dueño de la solicitud | `notificaciones.test.js`; `demo-api.sh` paso 15b |
+| Identifica la solicitud y el nuevo estado | Mensaje con número de solicitud, estado anterior y nuevo | Pantalla *Mis notificaciones* |
+| Registrar el evento que la origina | Tabla `notificaciones`: solicitud, destinatario, estados, canal, resultado | Se registra **antes** de intentar la entrega |
+| Un error al notificar conserva el cambio de estado | Se guarda el estado y **después** se avisa; errores síncronos y asíncronos atrapados | Pruebas con canal que falla; recorrido con la tabla renombrada |
+| Los errores del servicio no comprometen el proceso | La falla queda registrada como fallida y la transición responde normal | Ídem |
+| Otros canales sin modificar la lógica | Un canal nuevo es otro observador; `solicitud.service.js` no cambia | Prueba que agrega un canal sin tocar el servicio |
+
+**R3 — Auditoría de operaciones relevantes** (PR #57)
+
+| Lo que pide el PO | Cómo quedó | Evidencia |
+|---|---|---|
+| Registrar aprobación, rechazo y modificación de información relevante | Cambio de estado, aprobación de cada etapa, cambio de monto, asignación de evaluador, subida de documento y validación de identidad | `auditoria.test.js`; `demo-api.sh` paso 15d |
+| Usuario, fecha y hora, tipo de operación y solicitud | Columnas de la tabla `auditoria` | Pantalla *Auditoría* del administrador |
+| Identificar qué dato cambió y cuál fue el cambio | `detalle` con `campo`, `antes` y `despues` | Cambio de monto `null → 15000` verificado contra PostgreSQL |
+| Protegida contra modificación y eliminación | Triggers que rechazan UPDATE, DELETE y TRUNCATE, aunque los pida la propia aplicación | `demo-api.sh`: los tres rechazados por la base |
+| Acceso restringido por permisos | `GET /api/auditoria` solo para el administrador | 403 para estudiante, evaluador y autoridad |
+| Sin contraseñas, tokens ni secretos | Lista blanca de campos por operación; CUI enmascarado | La respuesta no contiene el CUI completo ni `password_hash` |
+
+### 9.2 Diferencias respecto al plan
+
+| Plan (secciones 3 a 8) | Lo que se hizo | Por qué |
+|---|---|---|
+| Transacciones como parámetro opcional en cada repositorio | `config/transaccion.js` con `AsyncLocalStorage`: los repositorios usan `db()` y no cambian de firma | Menos cambios en código ya probado |
+| Monto al crear la solicitud | Monto en Borrador, obligatorio para enviar y fijo después | La solicitud se crea desde la convocatoria antes de conocer el monto |
+| Orden: transacciones, luego R1 y R3; R2 en paralelo | R2 → R1 → R3, de menor a mayor riesgo | Las transacciones entraron con R1 |
+| Reparto entre cinco integrantes | Implementación de Cristopher Contreras; revisión y aprobación de cada PR por otro integrante (#54 y #57 José Daniel Pereira, #56 Jonatan Santiago, #53 Marco Corado); manual de usuario y ANEXOS por Marco Corado (#59, #61) | El plazo fue de un día |
+| Variables del servidor de correo en el Manual Técnico | No aplica: el canal entregado es en la aplicación (decisión 3) | — |
+
+La autoridad autorizadora no puede descargar cualquier expediente: solo el de
+las solicitudes que esperan su decisión. El análisis no lo había previsto y
+se agregó al Proxy de documentos.
+
+### 9.3 Cifras finales
+
+| | Antes (commit `32c90ea`) | Después |
+|---|---:|---:|
+| Endpoints | 29 | 34 |
+| Tablas | 5 | 8 |
+| Pruebas de backend | 418 | 522 |
+| Pruebas de frontend | 97 | 138 |
+| Verificaciones de `demo-api.sh` contra PostgreSQL | 48 | 91 |
+| Mutantes nuevos atrapados | — | 54 de 54 (R1: 23, R2: 12, R3: 19) |
 
 ---
 
