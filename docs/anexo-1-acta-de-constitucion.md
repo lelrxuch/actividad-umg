@@ -21,9 +21,9 @@
 
 | Nombre completo | Rol / Clave funcional | Correo electrónico | Teléfono |
 |---|---|---|---|
-| Jonatan Santiago | Desarrollador Backend | | |
-| Marco Antonio Rolando Corado García | QA / Tester | | |
-| Brayan David Sujuy Hernández | Desarrollador Frontend | | |
+| Jonatan Santiago | Desarrollador Backend | jsantiagoi@miumg.edu.gt | 5590-3048 |
+| Marco Antonio Rolando Corado García | QA / Tester | mcoradog5@miumg.edu.gt | 4699-3417 |
+| Brayan David Sujuy Hernández | Desarrollador Frontend | bsujuyh@miumg.edu.gt | 3422-2804 |
 | José Daniel Pereira Cabrera | Desarrollador Backend | | |
 | Cristopher Isaí Contreras Salazar | Arquitecto de Infraestructura | | |
 
