@@ -1,80 +1,75 @@
 # ANEXO 2 — Minuta de Reunión: Revisión de Sprint (Sprint Review)
 
-Este archivo contiene dos cosas:
-
-1. **La minuta del último Sprint**, pre-llenada con lo que se puede verificar en
-   el repositorio. Los campos marcados **`‹completar›`** solo los sabe quien
-   estuvo en la reunión.
-2. **La plantilla en blanco** (sección final) para los Sprints siguientes.
-
-> **Advertencia honesta:** el equipo no ha estado levantando minutas de Sprint
-> Review. Esta es la primera. Lo que sigue se reconstruyó a partir del historial
-> de Git y de los Pull Requests, que es evidencia verificable, pero **no
-> sustituye lo que se dijo en la reunión**: el feedback del Product Owner y las
-> decisiones de repriorización hay que llenarlos a mano.
+Este archivo contiene la minuta de la Sprint Review del último Sprint, que fue
+la defensa del proyecto ante el Product Owner, y al final la plantilla en
+blanco para Sprints posteriores.
 
 ---
 
-# Minuta — Sprint `‹completar: número›`
+# Minuta — Sprint final: requerimientos nuevos del Product Owner
 
 ## 1. Información General
 
 | | |
 |---|---|
 | **Nombre del Proyecto** | Plataforma Nacional para la Gestión Integral de Becas |
-| **Número de Sprint** | `‹completar›` |
-| **Período del Sprint** | 15/10/2026 – 21/10/2026 *(inferido de las fechas de merge; confirmar contra Jira)* |
-| **Fecha de la Reunión** | `‹completar›` |
+| **Número de Sprint** | Sprint final (requerimientos nuevos R1, R2 y R3) |
+| **Período del Sprint** | 30/10/2026 – 31/10/2026 |
+| **Fecha de la Reunión** | 31/10/2026 |
 
 ### Asistentes
 
-| Rol | Nombre | Asistió |
-|---|---|---|
-| Product Owner | Ing. Mario Fuentes | `‹confirmar›` |
-| Scrum Master | Ing. Mario Fuentes | `‹confirmar›` |
-| Development Team | Cristopher Isaí Contreras Salazar | `‹confirmar›` |
-| Development Team | Jonatan Santiago | `‹confirmar›` |
-| Development Team | José Daniel Pereira Cabrera | `‹confirmar›` |
-| Development Team | Brayan David Sujuy Hernández | `‹confirmar›` |
-| Development Team | Marco Antonio Rolando Corado García | `‹confirmar›` |
-| Stakeholders invitados | `‹completar, si aplica›` | |
+| Rol | Nombre |
+|---|---|
+| Product Owner | Ing. Mario Fuentes |
+| Scrum Master | Ing. Mario Fuentes |
+| Development Team | Cristopher Isaí Contreras Salazar |
+| Development Team | Jonatan Santiago |
+| Development Team | José Daniel Pereira Cabrera |
+| Development Team | Brayan David Sujuy Hernández |
+| Development Team | Marco Antonio Rolando Corado García |
+| Stakeholders invitados | No aplica |
 
 ---
 
 ## 2. Objetivo del Sprint (Sprint Goal)
 
-**`‹completar: copiar el objetivo definido en la Sprint Planning›`**
-
-Objetivo reconstruido a partir de lo entregado, para referencia:
-
-> *"Cerrar el ciclo de vida de una solicitud de beca de extremo a extremo —desde
-> la convocatoria que la habilita hasta el dictamen— con control de acceso
-> verificado en cada paso."*
+> *"Incorporar los tres requerimientos nuevos del Product Owner —doble
+> aprobación para montos mayores a Q10,000, notificaciones por cambio de estado
+> y auditoría de operaciones— sin romper el flujo existente y con evidencia de
+> pruebas de cada uno."*
 
 ---
 
 ## 3. Ítems del Product Backlog Completados
 
-| Historia | Estimación | Estado final | Notas y observaciones |
-|---|---|---|---|
-| **SCRUM-23** — Renombrar `usuario.routes.js` | `‹completar›` | ☑ Completado | PR #23. Deuda de nomenclatura del Sprint anterior |
-| **SCRUM-35** — Ciclo de vida de la solicitud | `‹completar›` | ☑ Completado | PR #22. **Se mergeó con un defecto crítico dentro**: ver sección 5 |
-| **SCRUM-35 (corrección)** — Autorización de solicitudes | `‹completar›` | ☑ Completado | PR #25. Cierra la elevación de privilegios |
-| **SCRUM-42** — Subida de documentos | `‹completar›` | ☑ Completado | PR #24. Lista blanca, límite de 5 MB, nombre generado por el servidor |
-| **SCRUM-32 / SCRUM-33** — Convocatorias | `‹completar›` | ☑ Completado | PR #27. Segundo ciclo de vida gobernado por el patrón State |
+| Historia | Puntos | Estado final | Notas y observaciones |
+|---|---:|---|---|
+| **SCRUM-54** — R2: Notificar al estudiante en cada cambio de estado | 5 | ☑ Completado | PR #54. El aviso se registra después de guardar el estado, nunca antes. Canal en la aplicación, sin correo |
+| **SCRUM-61** — R1: Doble aprobación de solicitudes de más de Q10,000 | 8 | ☑ Completado | PR #56. Nuevo estado *Pendiente de autorización* y rol `autorizador`. Las dos aprobaciones quedan registradas y no se repiten |
+| **SCRUM-63** — R3: Auditoría de operaciones relevantes | 8 | ☑ Completado | PR #57. Registro inmutable: la base rechaza UPDATE, DELETE y TRUNCATE. El CUI se guarda enmascarado |
+| **Total de puntos completados** | **21** | | |
+
+Trabajo de soporte del Sprint, sin puntos:
+
+| Ítem | PR |
+|---|---|
+| Análisis de impacto de los requerimientos nuevos | #53, #64 |
+| Cuenta de autoridad en los datos de demostración | #58 |
+| Anexos y manual técnico con cifras finales | #59 |
+| Manual de usuario v1.3 | #61 |
+| Despliegue en la nube (Render) | #63 |
 
 ### Métricas verificables al cierre del Sprint
 
-Las cifras "al inicio" se obtuvieron corriendo la suite sobre el árbol del
-repositorio en el commit del 15/10/2026, no de memoria.
-
-| Métrica | Al inicio | Al cierre |
+| | Antes del Sprint | Al cierre |
 |---|---:|---:|
-| Pruebas en el backend | 211 | **314** |
-| Archivos de prueba | 14 | **19** |
-| Endpoints | 12 | **26** |
-| Tablas en la base de datos | 4 | **5** |
-| Patrones de diseño implementados | 6 | 6 (el State pasó a gobernar **dos** ciclos de vida) |
+| Endpoints | 29 | 34 |
+| Tablas | 5 | 8 |
+| Pruebas de backend | 418 | 522 |
+| Pruebas de frontend | 97 | 138 |
+| Verificaciones de `demo-api.sh` contra PostgreSQL | 48 | 91 |
+| Mutantes nuevos atrapados por las pruebas | — | 54 de 54 |
 
 ---
 
@@ -82,80 +77,50 @@ repositorio en el commit del 15/10/2026, no de memoria.
 
 ### Funcionalidad demostrada
 
-1. Registro con validación de dominio institucional, y rechazo de un correo no
-   institucional enumerando los dominios aceptados.
-2. Catálogo de modalidades de beca y los documentos que exige cada una
-   (patrón Factory Method).
-3. Revisión de expediente incompleto, que informa **exactamente** qué documento
-   falta (patrón Builder).
-4. Ciclo de vida completo de una solicitud: Borrador → Enviada → En Evaluación →
-   Aprobada, y confirmación de que un estado final no admite ninguna acción
-   (patrón State).
-5. Control de acceso a documentos: el dueño y el evaluador asignado descargan;
-   otro estudiante y un evaluador ajeno reciben 403 **sin que el archivo se lea
-   del disco** (patrón Proxy).
-6. Intento de un estudiante de dictaminar su propia beca, rechazado con 403.
+- Flujo completo de una solicitud: el estudiante envía, el administrador asigna
+  evaluador, el evaluador dictamina.
+- Doble aprobación de una solicitud de más de Q10,000, con la autoridad
+  autorizadora dando la segunda aprobación.
+- Notificaciones al estudiante en cada cambio de estado.
+- Consulta de la bitácora de auditoría como administrador.
 
-**Responsable de la demo:** `‹completar›`
-
-**Herramienta:** `scripts/demo-api.sh`, recorrido de 15 pasos contra PostgreSQL
-real. Cada paso compara el código HTTP obtenido contra el esperado y el script
-termina con código de salida distinto de cero si algo falla.
+**Responsable de la demo:** Cristopher Contreras, con apoyo de Brayan Sujuy.
+Cada integrante expuso su parte de la presentación.
 
 ### Resumen de la demostración
 
-`‹completar: ¿fue fluida? ¿surgieron errores inesperados? ¿qué generó más
-interés?›`
+La exposición se desarrolló según lo planificado. En la demostración, el
+Product Owner planteó el caso de una solicitud que excede Q10,000. Al
+demostrarlo, se omitió el paso en que el administrador asigna la solicitud a un
+evaluador, por lo que la solicitud no apareció en la bandeja del evaluador y el
+flujo de doble aprobación no se completó frente al Product Owner.
 
 ---
 
-## 5. Hallazgo crítico del Sprint
+## 5. Hallazgo del Sprint
 
-Se registra aquí porque es el hecho más importante del Sprint y porque cambió el
-proceso del equipo.
+El fallo de la demostración fue de ejecución, no del sistema. Después de la
+reunión se repitió el mismo caso (estudiante Carlos Pérez, monto Q18,000) con
+todos los pasos: la solicitud pasó a *Pendiente de autorización* tras la
+aprobación del evaluador y quedó aprobada con la firma de la autoridad. El
+mismo flujo lo verifica automáticamente `scripts/demo-api.sh` (pasos 15b y 15c)
+en cada Pull Request.
 
-**Qué pasó.** El Pull Request #22 (SCRUM-35) se revisó, se aprobó y se mergeó
-con una **elevación de privilegios** dentro: cualquier usuario con sesión podía
-evaluar y dictaminar **cualquier** solicitud indicando su identificador. En la
-práctica, un estudiante podía aprobar su propia beca o rechazar la de otro.
-
-**Severidad.** Crítico: acceso indebido con capacidad de alterar resoluciones.
-
-**Cómo se detectó.** En una revisión posterior del módulo, no por una prueba. La
-Historia se había entregado **sin pruebas**.
-
-**Cómo se corrigió.** PR #25: se creó una capa de autorización en el dominio que
-**falla cerrado** —sin un actor identificable no se autoriza nada— y que se
-ejecuta dentro de la aplicación de la transición, de modo que no se puede
-agregar una transición nueva sin control de acceso. Se reprodujo el ataque
-contra PostgreSQL real antes y después del arreglo.
-
-**Consecuencia secundaria.** La corrección **rompió 10 pruebas existentes**, que
-pasaban actores sin derecho a la transición. Esas pruebas se actualizaron. Que
-se rompieran es la señal de que la suite de regresión funciona.
-
-**Hallazgo adicional.** Al verificar la corrección se descubrió que el manejo de
-errores del controller, que el equipo daba por protegido, **no estaba cubierto
-por ninguna prueba**: se revirtió a una versión que filtraba mensajes crudos de
-PostgreSQL al cliente y la suite siguió verde. Se escribieron 8 pruebas para
-cerrar ese hueco.
-
-**Cambio de proceso adoptado.** Se agregaron dos puntos a la Definición de
-Hecho:
-
-- Toda operación que modifique o exponga datos ajenos **declara explícitamente
-  quién puede ejecutarla**.
-- Existe al menos un **mutante** que demuestra que las pruebas nuevas verifican
-  algo.
-
-Y un punto a la lista de revisión de código: *"¿quién puede ejecutar esto?"*.
+Causa: no se ensayó la demostración con el orden exacto de pasos.
+Acción: ensayar las demostraciones con el orden completo de pasos. El Manual
+de Usuario (sección 13) ya indica que el evaluador solo ve las solicitudes que
+el administrador le asignó.
 
 ---
 
 ## 6. Feedback del Product Owner y de los Stakeholders
 
-`‹completar: todos los comentarios, preguntas y sugerencias recibidas. Es la
-sección que no se puede reconstruir del repositorio.›`
+| Quién | Comentario / Pregunta | Tipo |
+|---|---|---|
+| Ing. Mario Fuentes (PO) | ¿Qué pasa si la solicitud excede Q10,000? | Pregunta |
+| Ing. Mario Fuentes (PO) | Revisará la documentación entregada | Seguimiento |
+
+El Product Owner no hizo más preguntas durante la reunión.
 
 ---
 
@@ -163,40 +128,15 @@ sección que no se puede reconstruir del repositorio.›`
 
 ### Nuevos ítems sugeridos
 
-Propuestos por el equipo a partir de lo encontrado en el Sprint. **El Product
-Owner decide si entran y con qué prioridad:**
+Ninguno durante la reunión. Quedan en el backlog, sin implementar:
 
-1. **Pruebas reales en el frontend.** Los 2 archivos de prueba que existen no
-   importan código de producción: no pueden fallar ni aunque se borre el
-   frontend completo. La cobertura del cliente es **cero**, y nadie lo sabía.
-2. **Integración Continua** que ejecute las pruebas en cada push. Hoy nada
-   impide mecánicamente que un Pull Request con pruebas rojas llegue a
-   `develop`. Es la mejora de mejor relación costo/beneficio del proyecto.
-3. **Conectar la validación de identidad al flujo de envío.** El adaptador de
-   RENAP está implementado y probado, pero **solo lo importa su prueba**: es
-   trabajo hecho que no está rindiendo.
-4. **Atender `npm audit`**: 4 vulnerabilidades en el backend, 1 crítica.
-5. **Promover `develop` a `main`.** `main` lleva 48 commits de atraso, de modo
-   que no representa una versión desplegable.
-6. **Pantalla de convocatorias** (SCRUM-35 del backlog): el backend está
-   terminado y no hay forma de usarlo desde la aplicación.
+- EPIC-04 Comités de Evaluación (CU-17, CU-19).
+- EPIC-07 Reportes.
+- Envío de notificaciones por correo (hoy solo en la aplicación).
 
 ### Repriorización
 
-`‹completar›`
-
-Propuesta del equipo para discutir: **priorizar el frontend sobre los módulos de
-backend pendientes.** El cliente consume hoy **3 de los 26 endpoints**. Un
-módulo de backend más no se puede demostrar en la defensa final; una pantalla
-que use lo que ya existe, sí.
-
-### Decisión pendiente del Product Owner
-
-**El punto 7 de la Definición de Hecho no se puede cumplir**: exige despliegue en
-un entorno de pruebas y verificación del Product Owner, y **no existe entorno de
-Staging**. Ninguna Historia lo ha cumplido nunca. Las dos salidas están en
-`docs/anexo-6-plan-de-calidad.md` §4.4 y la decisión le corresponde al Product
-Owner.
+No hubo cambios de prioridad: era el último Sprint del semestre.
 
 ---
 
@@ -204,26 +144,23 @@ Owner.
 
 ### Resumen general
 
-`‹completar: ¿fue un Sprint exitoso? ¿se cumplió el objetivo?›`
-
-Lo verificable: el backend quedó completo para el flujo principal —convocatoria,
-solicitud, expediente, dictamen— con 314 pruebas y el recorrido de extremo a
-extremo en verde. Lo que no se cumplió: el frontend no avanzó, y el defecto
-crítico de SCRUM-35 consumió tiempo que estaba planificado para funcionalidad
-nueva.
+Se cumplió el objetivo del Sprint: los tres requerimientos están implementados,
+probados y desplegados. La demostración en vivo no mostró el caso de doble
+aprobación completo por un error de ejecución, que se corrigió y verificó
+después de la reunión.
 
 ### Próximas reuniones
 
-| Ceremonia | Fecha y hora |
+| Reunión | Fecha |
 |---|---|
-| Sprint Retrospective | `‹completar›` |
-| Próxima Sprint Planning | `‹completar›` |
+| Sprint Retrospective | No programada: último Sprint del semestre |
+| Próxima Sprint Planning | No aplica |
 
 ### Acuerdos de la reunión
 
-`‹completar›`
+- Entregar la documentación y los anexos para revisión del Product Owner.
+- Integrar en `main` los últimos cambios de `develop`.
 
----
 ---
 
 # Plantilla en blanco para los próximos Sprints

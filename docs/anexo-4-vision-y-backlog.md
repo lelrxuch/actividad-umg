@@ -530,19 +530,14 @@ podía dictaminar cualquier solicitud, de modo que un estudiante podía aprobar 
 propia beca. La lección quedó en el proceso y no solo en el arreglo: **"hay
 sesión" no es lo mismo que "tiene derecho a esto"**.
 
-### 6.2 El punto 7 requiere una decisión del Product Owner
+### 6.2 Estado del punto 7
 
-**No existe un entorno de Staging**, de modo que ninguna Historia ha cumplido
-nunca el punto 7. Un DoD con un punto que nadie cumple deja de ser un estándar.
-
-Las dos salidas, detalladas en el ANEXO 6 §4.4:
-
-- **(a)** Montar un entorno de Staging.
-- **(b)** Enmendar el punto 7: *"la funcionalidad fue demostrada al Product Owner
-  sobre una instalación verificada durante la Sprint Review"*.
-
-El equipo recomienda **(b)** para lo que resta del curso, dejando **(a)**
-registrada como mejora. La decisión le corresponde al Product Owner.
+Hasta el último Sprint **no existía un entorno de Staging**, y ninguna Historia
+cumplió el punto 7. El 31/10/2026 se desplegó la aplicación en Render (PR #63,
+`docs/despliegue-render.md`), que sirve como entorno de pruebas en la nube. La
+demostración ante el Product Owner se hizo sobre una instalación local, por lo
+que el punto 7 queda **parcialmente cumplido**: el despliegue existe, pero el
+Product Owner aún no verificó la funcionalidad sobre él.
 
 ---
 

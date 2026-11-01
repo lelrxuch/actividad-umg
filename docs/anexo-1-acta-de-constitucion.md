@@ -1,23 +1,19 @@
 # ANEXO 1 — Documento de Constitución del Equipo
 
-> **Este documento necesita tres decisiones del equipo antes de entregarse.**
-> Están marcadas con **`‹DECIDIR›`**. Todo lo demás está completo y verificado
-> contra el enunciado y contra el repositorio.
-
 ---
 
 ## 1. Identificación del Equipo
 
 | | |
 |---|---|
-| **Nombre del equipo** | **`‹DECIDIR›`** — el enunciado lo pide, y hoy el grupo no tiene nombre |
+| **Nombre del equipo** | Grupo 5 |
 | **Proyecto asignado** | Sistema de gestión de becas por el MINEDUC |
 | **Nombre del producto** | Plataforma Nacional para la Gestión Integral de Becas |
 | **Curso** | 0910-037 Análisis de Sistemas II — 8º Ciclo |
 | **Catedrático / Product Owner / Scrum Master** | Ing. Mario Fuentes |
 | **Repositorio** | `github.com/lelrxuch/actividad-umg` |
 | **Tablero** | Jira, proyecto SCRUM |
-| **Fecha de actualización** | 22/10/2026 |
+| **Fecha de actualización** | 31/10/2026 |
 
 ---
 
@@ -25,13 +21,13 @@
 
 | Nombre completo | Rol / Clave funcional | Correo electrónico | Teléfono |
 |---|---|---|---|
-| Jonatan Santiago | Desarrollador Backend | `‹completar›` | `‹completar›` |
-| Marco Antonio Rolando Corado García | QA / Tester | `‹completar›` | `‹completar›` |
-| Brayan David Sujuy Hernández | Desarrollador Frontend | `‹completar›` | `‹completar›` |
-| José Daniel Pereira Cabrera | Desarrollador Backend | `‹completar›` | `‹completar›` |
-| Cristopher Isaí Contreras Salazar | Arquitecto de Infraestructura | `‹completar›` | `‹completar›` |
+| Jonatan Santiago | Desarrollador Backend | jsantiagoi@miumg.edu.gt | 5590-3048 |
+| Marco Antonio Rolando Corado García | QA / Tester | mcoradog5@miumg.edu.gt | 4699-3417 |
+| Brayan David Sujuy Hernández | Desarrollador Frontend | bsujuyh@miumg.edu.gt | 3422-2804 |
+| José Daniel Pereira Cabrera | Desarrollador Backend | jpereirac3@miumg.edu.gt | 3744-3378 |
+| Cristopher Isaí Contreras Salazar | Arquitecto de Infraestructura | ccontrerass@miumg.edu.gt | 4688-7530 |
 
-Los datos de contacto los llena cada quien: no se inventan.
+Los datos de contacto los llena cada integrante a mano.
 
 ---
 
@@ -119,15 +115,17 @@ pruebas reales (PR #34 y siguientes); el detalle está en
 
 ## 5. Protocolo de Comunicación Única
 
-**Plataformas:** WhatsApp y Jira.
+**Plataformas:** Discord, WhatsApp y Jira.
 
-1. **WhatsApp** se usa **únicamente** para avisos, consultas rápidas y
+1. **Discord** se usa para las reuniones del equipo (Daily los lunes y
+   miércoles).
+2. **WhatsApp** se usa **únicamente** para avisos, consultas rápidas y
    coordinación inmediata.
-2. **Toda tarea, responsable, fecha y avance se registra en Jira.** Lo que no
+3. **Toda tarea, responsable, fecha y avance se registra en Jira.** Lo que no
    está en Jira no existe para efectos de seguimiento.
-3. Los mensajes deben ser claros, respetuosos y relacionados con el proyecto.
-4. Cada integrante confirma la recepción de los avisos importantes.
-5. Los bloqueos o retrasos se comunican **de inmediato** y se actualizan en Jira.
+4. Los mensajes deben ser claros, respetuosos y relacionados con el proyecto.
+5. Cada integrante confirma la recepción de los avisos importantes.
+6. Los bloqueos o retrasos se comunican **de inmediato** y se actualizan en Jira.
 
 **Agregado por el equipo:** la discusión técnica de un cambio concreto va en el
 **Pull Request**, no en WhatsApp, para que quede junto al código al que se
@@ -190,19 +188,19 @@ lo que se agrega es la verdad sobre su cumplimiento.
 | WBS | Tarea | Fecha | Responsable | Estado real |
 |---|---|---|---|---|
 | 4.1 | Módulo de Evaluación para Comité | 12/Abr/2026 | Jonatan S. / Brayan S. | **Pendiente.** El ciclo de estados existe; faltan criterios, puntajes y cupo |
-| 4.2 | Notificaciones y patrón Observer | 16/Abr/2026 | Cristopher Contreras | **Patrón implementado y probado.** Falta el transporte de correo real |
+| 4.2 | Notificaciones y patrón Observer | 16/Abr/2026 | Cristopher Contreras | **Entregado** (PR #54, requerimiento R2): aviso en la aplicación en cada cambio de estado. El envío por correo queda fuera |
 | 4.3 | Módulo de Reportes y Estadísticas | 20/Abr/2026 | José Pereira / Brayan S. | **Pendiente** |
-| 4.4 | Pruebas de Sistema, Aceptación (UAT) y corrección | 25/Abr/2026 | Marco Corado | Recorrido de 15 pasos entregado; UAT formal pendiente |
+| 4.4 | Pruebas de Sistema, Aceptación (UAT) y corrección | 25/Abr/2026 | Marco Corado | Recorrido automatizado de 91 verificaciones contra PostgreSQL en cada PR; UAT formal pendiente |
 
 ### Fase 5 — Despliegue, cierre y entrega final
 **Hito 5: Presentación Final ante el Product Owner**
 
 | WBS | Tarea | Fecha | Responsable | Estado real |
 |---|---|---|---|---|
-| 5.1 | Despliegue en entorno de Staging / Pruebas | 28/Abr/2026 | Cristopher Contreras | **No realizado.** Es la causa de que el punto 7 del DoD no se pueda cumplir |
-| 5.2 | Manuales Técnico y de Usuario | 02/May/2026 | Marco Corado / Brayan S. | **Entregados.** Manual de Usuario con capturas del flujo del estudiante; la parte de evaluador y administrador queda pendiente hasta que existan sus pantallas |
-| 5.3 | Auditoría del repositorio y limpieza de ramas | 05/May/2026 | Cristopher Contreras | **Pendiente.** `main` lleva 69 commits de atraso respecto a `develop` |
-| 5.4 | Demostración final y defensa | 10/May/2026 | Todo el equipo | Pendiente |
+| 5.1 | Despliegue en entorno de Staging / Pruebas | 28/Abr/2026 | Cristopher Contreras | **Entregado** en Render (PR #63): `becas-web.onrender.com` |
+| 5.2 | Manuales Técnico y de Usuario | 02/May/2026 | Marco Corado / Brayan S. | **Entregados.** Manual de Usuario v1.3 con estudiante, evaluador, autoridad y administrador (PR #61) |
+| 5.3 | Auditoría del repositorio y limpieza de ramas | 05/May/2026 | Cristopher Contreras | **Entregado.** `main` actualizada desde `develop` (PR #62); queda la integración final de la documentación |
+| 5.4 | Demostración final y defensa | 10/May/2026 | Todo el equipo | **Realizada** el 31/10/2026. Ver minuta en el Anexo 2 |
 
 ### 6.1 Nota sobre las fechas
 
@@ -211,9 +209,7 @@ Las fechas de este cronograma son las del enunciado y van de febrero a mayo de
 reproducen sin alterarlas porque son el compromiso original y modificarlas
 borraría la trazabilidad de lo que se planificó.
 
-**`‹DECIDIR›`** — si el equipo quiere entregar además un cronograma
-re-planificado para el tiempo que resta, se agrega como sección 6.2. Es una
-decisión del equipo con el Product Owner, no del redactor de este documento.
+No se re-planificó: el proyecto se entregó y defendió el 31/10/2026.
 
 ---
 
