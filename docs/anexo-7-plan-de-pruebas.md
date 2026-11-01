@@ -105,16 +105,13 @@ un Sprint, y no solo en la máquina de quien escribió el código.
 
 ### 5.2 Entorno de integración (Staging)
 
-**No existe.** Es una carencia declarada, no un olvido.
+Durante casi todo el proyecto **no existió**: la Aceptación del Product Owner se
+hizo en la Sprint Review sobre una instalación local. En el último Sprint se
+desplegó en Render (PR #63, `docs/despliegue-render.md`): frontend, API y
+PostgreSQL en la nube. Desde entonces sí se prueban variables de entorno
+reales, HTTPS y base de datos remota.
 
-El equipo decidió no montar un entorno compartido en la nube porque no hay
-presupuesto ni tiempo de administración, y porque la Aceptación del Product
-Owner se hace en la Sprint Review sobre una instalación local durante la
-demostración. La consecuencia que se acepta es que **no se prueban las
-condiciones de producción** (variables de entorno reales, HTTPS, latencia de
-red, base de datos remota).
-
-Mitigación: el `.env.example` documenta cada variable y la sección 4 del Manual
+Además, el `.env.example` documenta cada variable y la sección 4 del Manual
 Técnico lista qué cambia en producción, de modo que la diferencia entre local y
 producción esté escrita y no dependa de la memoria de alguien.
 
@@ -445,7 +442,7 @@ Declarados para que el Product Owner los conozca y pueda priorizarlos:
 | Riesgo | Impacto | Qué se hace hoy |
 |---|---|---|
 | ~~No hay CI~~ **Resuelto:** `backend` y `frontend` son checks obligatorios para fusionar | — | GitHub Actions desde el PR #50 |
-| No hay Staging: las condiciones de producción no se prueban | Medio | Variables documentadas en el Manual Técnico |
+| ~~No hay Staging~~ **Resuelto en parte:** Render desde el PR #63, en plan gratuito (se duerme, archivos no persistentes) | Bajo | `docs/despliegue-render.md` |
 | Las pruebas de Vitest no ejecutan SQL | Medio (antes Alto) | `demo-api.sh` contra PostgreSQL real en el CI, en cada PR |
 | No se mide cobertura de código | Medio | La verificación por mutación cubre el caso crítico, pero no dice qué quedó sin probar |
 | Las pruebas del frontend reemplazan al backend por dobles: no hay recorrido automatizado en navegador | Medio | Recorrido manual en navegador real al revisar cada PR del flujo |

@@ -1,12 +1,5 @@
 # ANEXO 3 — Política de Trabajo en Grupo
 
-> **Este documento necesita cuatro decisiones del equipo y cinco firmas.**
-> Están marcadas con **`‹DECIDIR›`**. El resto está completo.
->
-> La sección 8 (Sanciones) **no la puede redactar una sola persona**: el
-> enunciado dice expresamente *"el equipo debe definir aquí la sanción"*, y una
-> sanción que no se acordó entre todos no obliga a nadie.
-
 ---
 
 ## 1. Información del Equipo y del Proyecto
@@ -14,10 +7,10 @@
 | | |
 |---|---|
 | **Nombre del Proyecto** | Plataforma Nacional para la Gestión Integral de Becas |
-| **Nombre del Equipo** | **`‹DECIDIR›`** (opcional según el enunciado) |
+| **Nombre del Equipo** | Grupo 5 |
 | **Curso** | 0910-037 Análisis de Sistemas II — 8º Ciclo |
 | **Catedrático** | Ing. Mario Fuentes |
-| **Fecha de creación / revisión** | 22/10/2026 |
+| **Fecha de creación / revisión** | 31/10/2026 |
 
 ---
 
@@ -40,13 +33,8 @@ políticas aquí establecidas.
 
 ### Nuestra Misión
 
-**`‹DECIDIR›`** — el enunciado pide una frase propia. Una propuesta para
-discutir, construida sobre cómo el equipo ya está trabajando de hecho:
-
-> *"Entregar un sistema del que podamos responder: donde cada regla esté
-> probada, cada decisión esté justificada y cada carencia esté dicha, aprendiendo
-> en el proceso a trabajar como equipo de software y no como cinco personas
-> entregando partes."*
+> *"Construir un software de calidad aplicando Scrum y buenas prácticas, en un
+> ambiente de colaboración y respeto."*
 
 ### Nuestros Objetivos Clave
 
@@ -136,13 +124,12 @@ la Retrospectiva, no contar commits.
 
 ## 6. Ceremonias y cadencia
 
-**`‹DECIDIR›`** — el equipo debe fijar día y hora de cada ceremonia y
-registrarlos aquí. Propuesta para discutir:
+Las reuniones del equipo se hacen en Discord; los avisos rápidos, por WhatsApp.
 
 | Ceremonia | Cuándo | Duración | Quién la facilita |
 |---|---|---|---|
 | Sprint Planning | Al inicio de cada Sprint | 1 hora | Scrum Master |
-| Daily | `‹DECIDIR›` | 15 minutos | El equipo |
+| Daily | Lunes y miércoles, en Discord | 15 minutos | El equipo |
 | Sprint Review | Al cierre de cada Sprint, con el Product Owner | 1 hora | El equipo demuestra |
 | Sprint Retrospective | Inmediatamente después de la Review | 45 minutos | Scrum Master |
 
@@ -182,11 +169,7 @@ es final e inapelable.
 
 ## 8. Sanciones por Incumplimiento
 
-> **`‹DECIDIR› — ESTA SECCIÓN LA DEFINE EL EQUIPO EN CONJUNTO.**
-> El enunciado lo exige expresamente. Una sanción que no se acordó entre todos
-> no obliga a nadie, y por eso no se redacta aquí por cuenta de una sola
-> persona. Lo que sigue es la estructura que pide el enunciado, con lo que ya
-> está fijado por él y el espacio para lo que falta acordar.
+Sanciones acordadas por el equipo.
 
 Las sanciones se aplican **de manera progresiva y tras haber agotado las vías de
 diálogo** de la sección 7.
@@ -206,7 +189,7 @@ irrespetuoso.*
 | | Consecuencia |
 |---|---|
 | **1ª falta grave** | Reunión formal del equipo (Paso 3 de la sección 7) para discutir el problema y definir un plan de mejora con plazos claros. **Se documenta en minuta** |
-| **Si persiste** | **`‹DECIDIR›`** — el equipo elige entre las opciones del enunciado, o redacta la suya:<br>• Reducción proporcional del porcentaje de su contribución en la entrega evaluada<br>• Asignación de tareas adicionales para compensar al equipo<br>• Reporte formal al docente, que puede incluir la separación del equipo del proyecto |
+| **Si persiste** | Reducción proporcional del porcentaje de su contribución en la entrega evaluada |
 
 ### 8.1 Condición para que esto sea aplicable
 

@@ -156,27 +156,20 @@ completa si no lo cumple entero.
 | 4 | La funcionalidad cumple todos los Criterios de Aceptación | **Sí**, verificado en la Sprint Review |
 | 5 | No se introdujeron nuevos defectos | **Sí** desde el PR #50: el CI corre la suite y `demo-api.sh` contra PostgreSQL en cada PR, y es check obligatorio para fusionar |
 | 6 | La documentación técnica fue creada o actualizada | **Parcial.** Ver el defecto de `ESTADO.md` más abajo |
-| 7 | La funcionalidad fue desplegada en el entorno de pruebas/staging y verificada por el Product Owner | **No se puede cumplir.** Ver abajo |
+| 7 | La funcionalidad fue desplegada en el entorno de pruebas/staging y verificada por el Product Owner | **Parcial.** Desplegada en Render desde el PR #63; el PO no la verificó ahí. Ver abajo |
 
-#### El punto 7 del DoD no se puede cumplir, y hay que resolverlo
+#### El punto 7 del DoD
 
-**No existe un entorno de Staging.** El equipo decidió no montar uno: no hay
-presupuesto ni tiempo de administración, y la aceptación del Product Owner se
-hace sobre una instalación local durante la Sprint Review.
+Durante casi todo el proyecto **no existió un entorno de Staging**: la
+aceptación del Product Owner se hizo sobre una instalación local durante la
+Sprint Review, y ninguna Historia cumplió el punto 7.
 
-Eso deja un punto del DoD que **ninguna Historia ha cumplido nunca**, y un DoD
-que no se cumple deja de ser un estándar y se vuelve decorativo. Hay dos salidas
-y la decisión le corresponde al Product Owner:
-
-- **(a)** Montar un entorno de Staging, con lo que el punto se cumple como está
-  escrito.
-- **(b)** Enmendar el punto 7 para que diga lo que de verdad hacemos: *"la
-  funcionalidad fue demostrada al Product Owner sobre una instalación verificada
-  durante la Sprint Review"*.
-
-El equipo recomienda **(b)** para lo que resta del curso, y dejar **(a)**
-registrada como mejora. Lo que no es aceptable es mantener escrito un punto que
-nadie cumple.
+En el último Sprint se desplegó la aplicación en Render (PR #63): frontend,
+API y PostgreSQL en el plan gratuito, descrito en `docs/despliegue-render.md`.
+Con eso el entorno existe. Falta la otra mitad del punto: que el Product Owner
+verifique ahí la funcionalidad. Limitaciones del plan gratuito: el servicio se
+duerme tras 15 minutos sin uso, los archivos subidos no persisten y la base
+expira a los 30 días.
 
 #### Las 19 pruebas del frontend no verificaban nada (resuelto)
 
@@ -381,7 +374,7 @@ Ver sección 4.4.
 | Entorno | Propósito | Estado |
 |---|---|---|
 | Local | Desarrollo y pruebas | En uso por los cinco integrantes, en Windows y en Linux |
-| Staging | Integración y aceptación del PO | **No existe.** Ver 4.4 |
+| Staging | Integración y aceptación del PO | Render, desde el PR #63. Ver 4.4 |
 | Producción | — | Fuera del alcance del curso |
 
 Que dos integrantes trabajen en Windows y los demás en Linux **no es un detalle
